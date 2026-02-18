@@ -1,0 +1,64 @@
+
+# Order Book Chart
+
+The application draws the candlestick chart (like TradingView) and Order Book on top of it. Why? Because you cannot use realtime data from CEX to build Order Book indicator on top of the chart on TradingView.
+
+<img src="./app_orderbook_no_density.png" alt="">
+<br/>
+<img src="./app_orderbook_large_density.png" alt="">
+
+## Data providers
+
+The app uses klines, orderbook and rpi_orderbook API from
+
+- Binance
+- Bybit
+
+# What you can do with it
+
+## Live chart
+
+See live charts as TradingView does with realtime order book data.
+
+## Take a snapshot
+
+Take a snapshot of the current chart. It will be stored at app directory, use `Folder` button to open it.
+
+## Record live chart
+
+### Prepare macOS do not sleep when the screen is off
+
+<img src="./battery-do-not-sleep.png" alt="Do not sleep" width=40%>
+
+App needs this because it actually does not record real video, it just stores snapshots of the chart in the loop with a given time interval to not use too much CPU of your MacBook. After that you have to make a video from snapshots. How to do it is described below.
+
+### How to start recording
+
+1. Select a CEX and USDT pair.
+2. In the application set settings for the chart timeframe, candles, orderbook density.
+3. In the application set setting for a refresh interval.
+4. In the application use `Record` button to start record.
+5. Leave the application running for several hours (depends on the timeframe you have selected).
+6. To stop, use the same button.
+7. See the result snapshots use `Folder` button. 
+8. Use `ffmpeg` cli tool to convert snapshots to video.
+
+## ffmpeg
+
+- Prepare `images.txt` file with
+
+```bash
+cd /Users/${USER}/Library/Containers/OrderboolChart/Data/tmp/${TOKEN}USDT
+# Each image will be shown for 0.5 seconds.
+# Then refresh rate is 2 images per second.
+# Less images per second more details changes will be visible.
+# Be sure that files order is by ascending creation date (from oldest to newest).
+for f in *.png; do echo "file '$f'" >> images.txt; echo "duration 0.5" >> images.txt; done
+```
+
+- Run to convert a series of images listed in the file to video
+```bash
+ffmpeg -f concat -safe 0 -i ./images.txt -c:v libx264 -crf 10 -pix_fmt yuv420p ./output.mp4
+```
+
+<img src="./video_example.gif" alt="">
