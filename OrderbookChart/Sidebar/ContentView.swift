@@ -12,7 +12,7 @@ struct ContentView: View {
                 .navigationSplitViewColumnWidth(172)
         } content: {
             SidebarContentView(selectedCex: $selectedCex, selectedTicker: $selectedTicker)
-                .navigationSplitViewColumnWidth(216)
+                .navigationSplitViewColumnWidth(292)
         } detail: {
             SidebarDetailsView(selectedCex: $selectedCex, selectedTicker: $selectedTicker)
         }
