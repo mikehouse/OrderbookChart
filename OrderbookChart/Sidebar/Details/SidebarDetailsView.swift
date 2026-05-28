@@ -22,16 +22,16 @@ struct SidebarDetailsView: View {
 
     @State private var error: String?
 
-    @State private var candleLimit = 100
-    @State private var candleLimits = [50, 100, 200, 300, 400, 500]
+    @State private var candleLimit = 200
+    @State private var candleLimits = [50, 100, 150, 200, 250, 300, 400, 500]
 
     @State private var refreshInterval = 30
     @State private var refreshIntervals = [10, 20, 30, 40, 50, 60]
     @State private var autoRefresh = false
     @State private var autoRefreshTimer: Timer?
 
-    @State private var candleSize = 4
-    @State private var candleSizes = [2, 4, 6]
+    @State private var candleSize = 2
+    @State private var candleSizes = [2, 4]
 
     @State private var orderbookUnion = 10
     @State private var orderbookUnions = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
