@@ -44,7 +44,7 @@ struct SidebarContentView: View {
                 Text(selectedCex == nil ? "Select an exchange" : "No tickers available")
                     .foregroundStyle(.secondary)
             } else {
-                VStack {
+                VStack(alignment: .leading) {
                     HStack {
                         Text("\(tickers.count)")
                         Spacer()
@@ -63,7 +63,8 @@ struct SidebarContentView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .fixedSize()
-
+                    }
+                    HStack(spacing: 8) {
                         Picker("", selection: $exportFormat) {
                             ForEach(ExportFormat.allCases, id: \.self) { format in
                                 Text(format.title).tag(format)
