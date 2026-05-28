@@ -14,6 +14,8 @@ final class BinanceAPI: ApiInterface {
         case min15 = "15m"
         case min30 = "30m"
         case min60 = "1h"
+        case min240 = "4h"
+        case day1 = "1d"
     }
 
     var host: Host = .main

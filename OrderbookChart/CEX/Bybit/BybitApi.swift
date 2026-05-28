@@ -14,6 +14,8 @@ final class BybitAPI: ApiInterface {
         case min15 = "15"
         case min30 = "30"
         case min60 = "60"
+        case min240 = "240"
+        case day1 = "D"
     }
 
     var host: Host = .main

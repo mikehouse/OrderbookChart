@@ -88,7 +88,9 @@ extension Cex {
         case min5 = "5 min"
         case min15 = "15 min"
         case min30 = "30 min"
-        case min60 = "60 min"
+        case min60 = "1 h"
+        case min240 = "4 h"
+        case day1 = "1 d"
 
         var bybit: BybitAPI.Interval {
             switch self {
@@ -98,6 +100,8 @@ extension Cex {
             case .min15: return .min15
             case .min30: return .min30
             case .min60: return .min60
+            case .min240: return .min240
+            case .day1: return .day1
             }
         }
 
@@ -109,6 +113,8 @@ extension Cex {
             case .min15: return .min15
             case .min30: return .min30
             case .min60: return .min60
+            case .min240: return .min240
+            case .day1: return .day1
             }
         }
     }
