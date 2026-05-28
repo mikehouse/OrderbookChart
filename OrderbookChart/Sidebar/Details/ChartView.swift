@@ -254,6 +254,8 @@ struct ChartView: View {
         }
 
         let currentPrice = candles.last!.close
+        let candleHighestPrice = candles.map(\.high).sorted().last!
+        let candleLowestPrice = candles.map(\.low).sorted().first!
         let sellVolumes = sell.map(\.volume)
         let buyVolumes = buy.map(\.volume)
         let volumes = (sellVolumes + buyVolumes).sorted()
@@ -266,14 +268,14 @@ struct ChartView: View {
 
         var sellPoints: [ChartPointsSet] = []
         var buyPoints: [ChartPointsSet] = []
-        for (idx, (price, volume)) in sell.enumerated() {
+        for (idx, (price, volume)) in sell.enumerated() where price <= candleHighestPrice {
             let color: Color = price > currentPrice ? .red : .green
             let max = volume / lowestVolume * volumeDownscale
             let id = "\(idx)-sell"
             let set = ChartPointsSet(points: [0, max].map({ ChartPoint(x: Double($0), y: price, group: id, color: color) }))
             sellPoints.append(set)
         }
-        for (idx, (price, volume)) in buy.enumerated() {
+        for (idx, (price, volume)) in buy.enumerated() where price >= candleLowestPrice {
             let color: Color = price > currentPrice ? .red : .green
             let max = volume / lowestVolume * volumeDownscale
             let id = "\(idx)-buy"
