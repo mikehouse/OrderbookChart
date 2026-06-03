@@ -1,4 +1,5 @@
 
+import Foundation
 import Charts
 import SwiftUI
 
@@ -112,6 +113,7 @@ struct ChartView: View {
                 }
             }
             .chartYScale(domain: (low * 1)...(high * 1))
+            .chartXScale(domain: 0...(max(candles.count - 1, 0)))
             .frame(width: Double(candles.count) * Double(candleSize + 2))
             .fixedSize(horizontal: true, vertical: false)
             .padding()
@@ -131,14 +133,21 @@ struct ChartView: View {
             }
             .chartYAxis(.hidden)
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 4)) { _ in
-                    AxisGridLine()
-                    AxisTick()
+                AxisMarks(values: turnoverXAxisIndexes(maxLabels: 5)) { value in
+                    AxisValueLabel {
+                        if let index = value.as(Int.self) {
+                            Text(turnoverDateLabel(at: index))
+                                .font(.caption2)
+                                .foregroundStyle(.gray)
+                        }
+                    }
                 }
             }
             .chartLegend(.hidden)
             .padding(.leading, maxYAxisLabelWidth)
             .padding(.top, -20)
+            .padding(.bottom, 16)
+            .chartXScale(domain: 0...(max(candles.count - 1, 0)))
             .frame(width: Double(candles.count) * Double(candleSize + 2), height: turnoverChartHeight)
         }
     }
@@ -176,6 +185,28 @@ struct ChartView: View {
             let max = turnover / maxTurnover * maxY
             return max
         }
+    }
+
+    private func turnoverXAxisIndexes(maxLabels: Int) -> [Int] {
+        let count = candles.count
+        guard count > 0 else { return [] }
+
+        let labelCount = min(maxLabels, count)
+        guard labelCount > 1 else { return [0] }
+
+        let lastIndex = count - 1
+        let lastLabelIndex = labelCount - 1
+
+        return (0..<labelCount).map { labelIndex in
+            labelIndex * lastIndex / lastLabelIndex
+        }
+    }
+
+    private func turnoverDateLabel(at index: Int) -> String {
+        guard candles.indices.contains(index) else { return "" }
+
+        let date = Date(timeIntervalSince1970: candles[index].startTime)
+        return date.formatted(.dateTime.day(.twoDigits).hour().minute())
     }
 
     private func orderbookPoints() -> (sellVolume: Double, buyVolume: Double, points: [ChartPointsSet]) {

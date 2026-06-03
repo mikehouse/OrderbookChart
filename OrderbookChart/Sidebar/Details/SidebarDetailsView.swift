@@ -23,7 +23,7 @@ struct SidebarDetailsView: View {
     @State private var error: String?
 
     @State private var candleLimit = 200
-    @State private var candleLimits = [50, 100, 150, 200, 250, 300, 400, 500]
+    @State private var candleLimits = [100, 150, 200, 250, 300, 400, 500]
 
     @State private var refreshInterval = 30
     @State private var refreshIntervals = [10, 20, 30, 40, 50, 60]
