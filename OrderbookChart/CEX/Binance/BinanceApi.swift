@@ -20,6 +20,12 @@ final class BinanceAPI: ApiInterface {
 
     var host: Host = .main
     var session: URLSession = .shared
+
+    fileprivate let cexRPMService: CexRPMService
+
+    init(cexRPMService: CexRPMService) {
+        self.cexRPMService = cexRPMService
+    }
 }
 
 extension BinanceAPI {
@@ -40,6 +46,7 @@ extension BinanceAPI {
             URLQueryItem(name: "limit", value: "\(limit)")
         ]
         let url = components?.url!
+        cexRPMService.increment(.binance, api: .kLines(limit: limit))
         let data = try await self.data(url!, session: session)
 
         // Binance returns array of arrays directly
@@ -98,10 +105,12 @@ extension BinanceAPI {
     typealias Orderbook = Cex.Orderbook
 
     func orderbook(_ symbol: String) async throws -> Orderbook {
+        cexRPMService.increment(.binance, api: .orderbook)
         return try await _orderbook(symbol, path: "depth", limit: 1000)
     }
 
     func rpiOrderbook(_ symbol: String) async throws -> Orderbook {
+        cexRPMService.increment(.binance, api: .rpiOrderbook)
         return try await _orderbook(symbol, path: "rpiDepth", limit: 1000)
     }
 
@@ -153,6 +162,7 @@ extension BinanceAPI {
         print("Fetching tickers from Binance API.")
         let components = URLComponents(string: host.rawValue + "/fapi/v1/ticker/24hr")
         let url = components?.url!
+        cexRPMService.increment(.binance, api: .tickers)
         let data = try await self.data(url!, session: session)
         try await FileService.shared.write(data, name: "tickers_Binance.json")
         return try fetch24hrTickers(data: data)

@@ -1,14 +1,17 @@
 
 import SwiftUI
 
+private let cexRPMService = CexRPMService()
+
 @main
 struct OrderbookChartApp: App {
 
     @State private var appContext = AppContext(
-        binance: BinanceAPI(),
+        binance: BinanceAPI(cexRPMService: cexRPMService),
         bybit: BybitAPI(),
         userDefaults: UserDefaults.standard,
-        recordingsService: RecordingsService()
+        recordingsService: RecordingsService(),
+        cexRPMService: cexRPMService
     )
 
     var body: some Scene {

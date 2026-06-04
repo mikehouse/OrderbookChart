@@ -410,7 +410,8 @@ private enum StorageKeys: String {
                 binance: MockApi.bybitBTC1Min,
                 bybit: MockApi.bybitBTC1Min,
                 userDefaults: UserDefaults(),
-                recordingsService: RecordingsService()
+                recordingsService: RecordingsService(),
+                cexRPMService: CexRPMService()
             ))
     }
     .navigationTitle("")

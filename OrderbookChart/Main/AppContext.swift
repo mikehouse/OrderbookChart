@@ -7,16 +7,19 @@ import Foundation
     let bybit: ApiInterface
     let userDefaults: UserDefaults
     let recordingsService: RecordingsService
+    let cexRPMService: CexRPMService
 
     init(
         binance: ApiInterface,
         bybit: ApiInterface,
         userDefaults: UserDefaults,
-        recordingsService: RecordingsService
+        recordingsService: RecordingsService,
+        cexRPMService: CexRPMService
     ) {
         self.binance = binance
         self.bybit = bybit
         self.userDefaults = userDefaults
         self.recordingsService = recordingsService
+        self.cexRPMService = cexRPMService
     }
 }

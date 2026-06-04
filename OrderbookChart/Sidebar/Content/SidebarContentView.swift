@@ -24,6 +24,7 @@ struct SidebarContentView: View {
     @State private var splitCount: Int = 100
     @State private var exportMessage: String?
     @State private var isSelectingExportDirectory = false
+    @State private var rateLimitPercent: Int = 0
 
     var body: some View {
         Group {
@@ -46,7 +47,7 @@ struct SidebarContentView: View {
             } else {
                 VStack(alignment: .leading) {
                     HStack {
-                        Text("\(tickers.count)")
+                        Text("Tickers: \(tickers.count)")
                         Spacer()
                         Button(action: {
                             Task {
@@ -56,6 +57,10 @@ struct SidebarContentView: View {
                             Image(systemName: "arrow.counterclockwise")
                         })
                         .buttonStyle(.borderedProminent)
+                    }
+                    HStack {
+                        Text("API rate limits: (\(rateLimitPercent)%)")
+                        Spacer()
                     }
                     HStack(spacing: 8) {
                         Button("Export") {
@@ -116,6 +121,12 @@ struct SidebarContentView: View {
         .onChange(of: exportMessage) {
             if let exportMessage = exportMessage {
                 print(exportMessage)
+            }
+        }
+        .onChange(of: appContext.cexRPMService.usageByCex) { _, new in
+            if let selectedCex = selectedCex {
+                let rateLimit = appContext.cexRPMService.status(selectedCex)
+                rateLimitPercent = rateLimit.limit > 0 ? Int((Double(rateLimit.count) / Double(rateLimit.limit)) * 100) : 0
             }
         }
         .fileImporter(
