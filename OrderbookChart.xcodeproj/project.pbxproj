@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
-		825D6F082F3CB81D00B919C5 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
+		825D6F082F3CB81D00B919C5 /* Exceptions for "OrderbookChart" folder in "Compile Sources" phase from "OrderbookChart" target */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = 82EAD5542F3B3FFC00F432D2 /* Sources */;
 			membershipExceptions = (
@@ -29,11 +29,7 @@
 		82EAD55A2F3B3FFC00F432D2 /* OrderbookChart */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				825D6F082F3CB81D00B919C5 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
+				825D6F082F3CB81D00B919C5 /* Exceptions for "OrderbookChart" folder in "Compile Sources" phase from "OrderbookChart" target */,
 			);
 			path = OrderbookChart;
 			sourceTree = "<group>";
@@ -317,9 +313,9 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -361,9 +357,9 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
