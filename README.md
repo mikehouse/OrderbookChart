@@ -3,8 +3,7 @@
 
 The application draws the candlestick chart (like TradingView) and Order Book on top of it. Why? Because you cannot use realtime data from CEX to build Order Book indicator on top of the chart on TradingView.
 
-<img src="./app_orderbook_no_density.png" alt="">
-<img src="./app_orderbook_large_density.png" alt="">
+<img src="./app_orderbook_no_density.webp" alt="">
 
 ## Technologies
 
@@ -28,7 +27,43 @@ See live charts as TradingView does with realtime order book data.
 
 ## Take a snapshot
 
-Take a snapshot of the current chart. It will be stored at app directory, use `Folder` button to open it.
+Take a snapshot of the current chart. It will be stored in an app directory, use `Folder` button to open it.
+
+# Installation
+
+## From Release section
+
+- Download latest release
+- Unzip the release archive
+- Move `OrderbookChart.app` to */Applications/* folder
+- Launch `OrderbookChart.app` application
+- If the app cannot be launched because of the signature of an untrusted developer, then do the next step
+- Allow the system to run the application from a not trusted developer
+
+```bash
+xattr -d com.apple.quarantine OrderbookChart.app
+```
+
+## Build from sources (Xcode 26.1+)
+
+- Download this repository
+- Open `Terminal.app`
+- Go to the repository sources in `Terminal.app`
+
+```bash
+cd ~/Downloads/OrderbookChart/
+```
+
+- Build the project by running the commands below in `Terminal.app`
+
+```bash
+./make_release.sh
+```
+
+- Find `OrderbookChart.app.${arch}.zip` under the hidden folder ./.build
+- Unzip the built archive
+- Move the app to */Applications/* directory.
+- Launch `OrderbookChart.app` application
 
 ## Record live chart
 

@@ -156,7 +156,7 @@ struct SidebarDetailsView: View {
     private func orderbookUnionToolbar() -> some ToolbarContent {
         ToolbarItem(placement: .automatic) {
             HStack {
-                Text("Orderbook Density")
+                Text("Density")
                     .fixedSize()
                     .padding(.leading, 15)
                 Picker("", selection: $orderbookUnion) {
