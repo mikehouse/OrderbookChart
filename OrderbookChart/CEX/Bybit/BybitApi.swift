@@ -100,10 +100,10 @@ extension BybitAPI {
         let holder = try JSONDecoder().decode(ApiResult<Holder>.self, from: data)
         return Orderbook(
             symbol: holder.result.s,
-            bids: holder.result.a.map {
+            bids: holder.result.b.map {
                 Orderbook.Level(price: Double($0[0])!, size: Double($0[1])!)
             },
-            asks: holder.result.b.map {
+            asks: holder.result.a.map {
                 Orderbook.Level(price: Double($0[0])!, size: Double($0[1])!)
             },
             timestamp: holder.result.ts / 1000.0
