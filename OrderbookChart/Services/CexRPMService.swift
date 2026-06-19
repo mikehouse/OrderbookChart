@@ -7,6 +7,7 @@ final class CexRPMService {
         case kLines(limit: Int)
         case orderbook
         case rpiOrderbook
+        case ticker
         case tickers
 
         func weight(for cex: Cex) -> Int {
@@ -35,6 +36,8 @@ final class CexRPMService {
                 return 20
             case .rpiOrderbook:
                 return 20
+            case .ticker:
+                return 1
             case .tickers:
                 return 40
             }

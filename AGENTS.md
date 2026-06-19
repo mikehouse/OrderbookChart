@@ -25,8 +25,11 @@
 
 ## Agent ruleset
 
-1. **DO NOT COMPILE CODE YOURSELF** as it spends a lot of tokens. A human operator will use Xcode to compile new generated code. Just say that the code is ready to be built.
-2. **DO NOT SCAN** directories if not asked:
+1. If you want to compile the project to verify that code is correct, use a target platform  as `macOS` and must pipe output through `xcbeautify`.
 
-- ./.idea
-- ./.git
+Example:
+```
+xcodebuild -scheme OrderbookChart -destination 'platform=macOS' build | xcbeautify
+```
+
+2. Always use an Xcode system DerivedData path for building the project to reuse already built cache, do not override it.

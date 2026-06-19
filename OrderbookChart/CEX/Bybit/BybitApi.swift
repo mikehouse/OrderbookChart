@@ -138,6 +138,20 @@ extension BybitAPI {
         return try self.tickers(data: data)
     }
 
+    func ticker(_ symbol: String) async throws -> Ticker {
+        var components = URLComponents(string: host.rawValue + "/v5/market/tickers")
+        components?.queryItems = [
+            URLQueryItem(name: "category", value: "linear"),
+            URLQueryItem(name: "symbol", value: symbol)
+        ]
+        let url = components?.url!
+        let data = try await self.data(url!, session: session)
+        guard let ticker = try self.tickers(data: data).first else {
+            throw ApiInterfaceError.tickerNotFound(symbol: symbol)
+        }
+        return ticker
+    }
+
     private func tickersCache() async throws -> [Ticker] {
         if let data = try await FileService.shared.read("tickers_Bybit.json") {
             return try self.tickers(data: data)
@@ -161,6 +175,17 @@ extension BybitAPI {
                 symbol: ticker.symbol,
                 turnover24h: Double(ticker.turnover24h)!
             )
+        }
+    }
+
+    enum ApiInterfaceError: Error, Sendable, LocalizedError {
+        case tickerNotFound(symbol: String)
+
+        var errorDescription: String? {
+            switch self {
+            case .tickerNotFound(let symbol):
+                return "Ticker not found: \(symbol)"
+            }
         }
     }
 }

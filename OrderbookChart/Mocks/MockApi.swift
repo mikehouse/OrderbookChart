@@ -74,8 +74,12 @@ struct MockApi: ApiInterface, Sendable {
         )
     }
 
-    func tickers(_ cache: Bool) async throws -> [Ticker] {
-        []
+    func tickers(_ cache: Bool = false) async throws -> [Ticker] {
+        return []
+    }
+
+    func ticker(_ symbol: String) async throws -> Ticker {
+        Ticker(symbol: symbol, turnover24h: 10000)
     }
 
     private struct ApiResult<Result: Decodable>: Decodable {

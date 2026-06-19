@@ -12,6 +12,8 @@ protocol ApiInterface: Sendable {
     func rpiOrderbook(_ symbol: String) async throws -> Orderbook
     @concurrent
     func tickers(_ cache: Bool) async throws -> [Ticker]
+    @concurrent
+    func ticker(_ symbol: String) async throws -> Ticker
 }
 
 extension ApiInterface {

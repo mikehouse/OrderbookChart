@@ -10,6 +10,7 @@ struct ChartView: View {
     @Binding private var candles: [Candle]
     @Binding private var orderbook: Orderbook?
     @Binding private var rpiOrderbook: Orderbook?
+    private let ticker: Ticker?
     private let isSnapshot: Bool
     
     private let turnoverChartHeight: Double = 60
@@ -20,6 +21,7 @@ struct ChartView: View {
         candles: Binding<[Candle]>,
         orderbook: Binding<Orderbook?>,
         rpiOrderbook: Binding<Orderbook?>,
+        ticker: Ticker?,
         isSnapshot: Bool
     ) {
         self._candleSize = candleSize
@@ -27,6 +29,7 @@ struct ChartView: View {
         self._candles = candles
         self._orderbook = orderbook
         self._rpiOrderbook = rpiOrderbook
+        self.ticker = ticker
         self.isSnapshot = isSnapshot
     }
 
@@ -42,26 +45,39 @@ struct ChartView: View {
         let turnover = turnoverValues()
 
         container {
-            HStack {
-                let buy = buyVolume * 100.0 / (sellVolume + buyVolume)
-                let sell = 100.0 - buy
-                HStack(spacing: 4) {
-                    Text(buyVolume, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
-                    Text("(")
-                    Text("$")
-                    Text(buy, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
-                    Text("% )")
+            VStack(spacing: 8) {
+                if let ticker {
+                    HStack(spacing: 4) {
+                        Text("Turnover 24h:")
+                            .foregroundStyle(Color.gray)
+                        Text(ticker.turnover24h, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
+                        Text("$")
+                        Spacer()
+                    }
                 }
-                .foregroundStyle(.green)
-                HStack(spacing: 4) {
-                    Text(sellVolume, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
-                    Text("$")
-                    Text("(")
-                    Text(sell, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
-                    Text("% )")
+                HStack {
+                    let buy = buyVolume * 100.0 / (sellVolume + buyVolume)
+                    let sell = 100.0 - buy
+                    Text("OrderBook:")
+                        .foregroundStyle(Color.gray)
+                    HStack(spacing: 4) {
+                        Text(buyVolume, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
+                        Text("(")
+                        Text("$")
+                        Text(buy, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
+                        Text("% )")
+                    }
+                    .foregroundStyle(.green)
+                    HStack(spacing: 4) {
+                        Text(sellVolume, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
+                        Text("$")
+                        Text("(")
+                        Text(sell, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
+                        Text("% )")
+                    }
+                    .foregroundStyle(.red)
+                    Spacer()
                 }
-                .foregroundStyle(.red)
-                Spacer()
             }
             .padding([.leading, .top])
             Chart {
@@ -364,6 +380,7 @@ private struct PreviewWrapper: View {
     @State private var candles: [Candle] = []
     @State private var orderbook: Orderbook?
     @State private var rpiOrderbook: Orderbook?
+    @State private var ticker: Ticker?
 
     var body: some View {
         if orderbook != nil, !candles.isEmpty {
@@ -373,22 +390,24 @@ private struct PreviewWrapper: View {
                 candles: $candles,
                 orderbook: $orderbook,
                 rpiOrderbook: $rpiOrderbook,
+                ticker: ticker,
                 isSnapshot: false
             )
         } else {
             Text("")
                 .task {
                     let api = MockApi.bybitBTC1Min
-                    let (candles, orderbook, rpiOrderbook) = try! await (
+                    let (candles, orderbook, rpiOrderbook, ticker) = try! await (
                         api.kLines("", interval: .min1, limit: 0),
                         api.orderbook(""),
                         api.rpiOrderbook(""),
+                        api.ticker("BTCUSDT"),
                     )
                     self.candles = candles
                     self.orderbook = orderbook
                     self.rpiOrderbook = rpiOrderbook
+                    self.ticker = ticker
                 }
         }
     }
 }
-

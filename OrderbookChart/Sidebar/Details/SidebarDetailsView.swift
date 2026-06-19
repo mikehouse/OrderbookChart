@@ -19,6 +19,7 @@ struct SidebarDetailsView: View {
     @State private var candles: [Candle] = []
     @State private var orderbook: Orderbook?
     @State private var rpiOrderbook: Orderbook?
+    @State private var ticker: Ticker?
 
     @State private var error: String?
 
@@ -53,6 +54,7 @@ struct SidebarDetailsView: View {
                         candles: $candles,
                         orderbook: $orderbook,
                         rpiOrderbook: $rpiOrderbook,
+                        ticker: ticker ?? selectedTicker,
                         isSnapshot: false
                     )
                     .toolbar {
@@ -224,6 +226,7 @@ struct SidebarDetailsView: View {
                     candles: candles,
                     orderbook: orderbook,
                     rpiOrderbook: rpiOrderbook,
+                    ticker: ticker ?? selectedTicker!,
                     height: height
                 )
             }) {
@@ -259,7 +262,7 @@ struct SidebarDetailsView: View {
                         let recordDate = Date()
                         let timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(refreshInterval), repeats: true) { [candleSize, orderbookUnion] time in
                             Task { @MainActor in
-                                if let (candles, orderbook, rpiOrderbook) = try? await chartData(
+                                if let (candles, orderbook, rpiOrderbook, ticker) = try? await chartData(
                                     selectedCex: selectedCex,
                                     selectedTicker: selectedTicker
                                 ) {
@@ -270,6 +273,7 @@ struct SidebarDetailsView: View {
                                         candles: candles,
                                         orderbook: orderbook,
                                         rpiOrderbook: rpiOrderbook,
+                                        ticker: ticker ?? selectedTicker,
                                         height: height
                                     )
                                 }
@@ -313,24 +317,26 @@ struct SidebarDetailsView: View {
     private func updateChart() async {
         do {
             error = nil
-            let (candles, orderbook, rpiOrderbook) = try await chartData(
+            let (candles, orderbook, rpiOrderbook, ticker) = try await chartData(
                 selectedCex: selectedCex, selectedTicker: selectedTicker
             )
             self.candles = candles
             self.orderbook = orderbook
             self.rpiOrderbook = rpiOrderbook
+            self.ticker = ticker
         } catch {
             self.candles = []
             self.orderbook = nil
             self.rpiOrderbook = nil
+            self.ticker = nil
             self.error = "\(error)"
             print(error)
         }
     }
 
-    private func chartData(selectedCex: Cex?, selectedTicker: Ticker?) async throws -> (candles: [Candle], orderbook: Orderbook?, rpiOrderbook: Orderbook?) {
+    private func chartData(selectedCex: Cex?, selectedTicker: Ticker?) async throws -> (candles: [Candle], orderbook: Orderbook?, rpiOrderbook: Orderbook?, ticker: Ticker?) {
         guard let selectedCex, let selectedTicker else {
-            return ([], nil, nil)
+            return ([], nil, nil, nil)
         }
         let api: ApiInterface
         switch selectedCex {
@@ -339,12 +345,13 @@ struct SidebarDetailsView: View {
         case .bybit:
             api = appContext.bybit
         }
-        let (candles, orderbook, rpiOrderbook) = try await (
+        let (candles, orderbook, rpiOrderbook, ticker) = try await (
             api.kLines(selectedTicker.symbol, interval: timeframe, limit: candleLimit),
             api.orderbook(selectedTicker.symbol),
-            api.rpiOrderbook(selectedTicker.symbol)
+            api.rpiOrderbook(selectedTicker.symbol),
+            api.ticker(selectedTicker.symbol)
         )
-        return (candles, orderbook, rpiOrderbook)
+        return (candles, orderbook, rpiOrderbook, ticker)
     }
 
     private func makeSnapshot(
@@ -354,6 +361,7 @@ struct SidebarDetailsView: View {
         candles: [Candle],
         orderbook: Orderbook?,
         rpiOrderbook: Orderbook?,
+        ticker: Ticker?,
         height: Double
     ) {
         let data = ImageService.shared.chartSnapshotPNG(
@@ -362,6 +370,7 @@ struct SidebarDetailsView: View {
             candles: candles,
             orderbook: orderbook,
             rpiOrderbook: rpiOrderbook,
+            ticker: ticker,
             height: height
         )
         if let data {

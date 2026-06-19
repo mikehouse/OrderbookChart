@@ -168,6 +168,17 @@ extension BinanceAPI {
         return try fetch24hrTickers(data: data)
     }
 
+    func ticker(_ symbol: String) async throws -> Ticker {
+        var components = URLComponents(string: host.rawValue + "/fapi/v1/ticker/24hr")
+        components?.queryItems = [
+            URLQueryItem(name: "symbol", value: symbol)
+        ]
+        let url = components?.url!
+        cexRPMService.increment(.binance, api: .ticker)
+        let data = try await self.data(url!, session: session)
+        return try fetch24hrTicker(data: data)
+    }
+
     private func tickersCache() async throws -> [Ticker] {
         if let data = try await FileService.shared.read("tickers_Binance.json") {
             return try fetch24hrTickers(data: data)
@@ -177,11 +188,19 @@ extension BinanceAPI {
 
     private func fetch24hrTickers(data: Data) throws -> [Ticker] {
         return try JSONDecoder().decode([TickerData].self, from: data).map { ticker in
-            Ticker(
-                symbol: ticker.symbol,
-                turnover24h: ticker.quoteVolumeDouble
-            )
+            self.ticker(from: ticker)
         }
+    }
+
+    private func fetch24hrTicker(data: Data) throws -> Ticker {
+        return ticker(from: try JSONDecoder().decode(TickerData.self, from: data))
+    }
+
+    private func ticker(from ticker: TickerData) -> Ticker {
+        Ticker(
+            symbol: ticker.symbol,
+            turnover24h: ticker.quoteVolumeDouble
+        )
     }
 
     private struct TickerData: Decodable {
