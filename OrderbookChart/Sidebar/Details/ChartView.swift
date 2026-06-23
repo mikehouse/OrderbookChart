@@ -43,6 +43,7 @@ struct ChartView: View {
             ?? candles.map(\.high).max() ?? 0
         let maxYAxisLabelWidth = calculateMaxYAxisLabelWidth(for: high)
         let turnover = turnoverValues()
+        let avgMovePercent = averageMovePercent()
 
         container {
             VStack(spacing: 8) {
@@ -52,6 +53,15 @@ struct ChartView: View {
                             .foregroundStyle(Color.gray)
                         Text(ticker.turnover24h, format: .number.precision(.fractionLength(0...2)).grouping(.automatic))
                         Text("$")
+                        Spacer()
+                    }
+                }
+                if let avgMovePercent {
+                    HStack(spacing: 4) {
+                        Text("Avg Move:")
+                            .foregroundStyle(Color.gray)
+                        Text(avgMovePercent, format: .number.precision(.fractionLength(0...4)).grouping(.automatic))
+                        Text("%")
                         Spacer()
                     }
                 }
@@ -190,6 +200,18 @@ struct ChartView: View {
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
         let size = (maxString as NSString).size(withAttributes: attributes)
         return size.width + 10
+    }
+
+    private func averageMovePercent() -> Double? {
+        guard candles.count > 1 else { return nil }
+
+        let moves = zip(candles, candles.dropFirst()).compactMap { previous, current -> Double? in
+            guard previous.close != 0 else { return nil }
+            return abs(current.close / previous.close - 1) * 100
+        }
+
+        guard !moves.isEmpty else { return nil }
+        return moves.reduce(0, +) / Double(moves.count)
     }
 
     private func turnoverValues() -> [Double] {
