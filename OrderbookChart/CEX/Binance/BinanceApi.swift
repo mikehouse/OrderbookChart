@@ -205,8 +205,8 @@ extension BinanceAPI {
 
     private struct TickerData: Decodable {
         let symbol: String
-        let quoteVolume: String
+        let quoteVolume: String?
 
-        var quoteVolumeDouble: Double { Double(quoteVolume) ?? 0 }
+        var quoteVolumeDouble: Double { Double(quoteVolume ?? "0") ?? 0 }
     }
 }
