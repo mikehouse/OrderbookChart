@@ -22,6 +22,8 @@
 - The app shows a list of tickers from CEX (supports Binance and Bybit)
 - For the selected ticker the app shows a candlestick chart for the latest 100–500 candles
 - To that candlestick chart, the app also shows realtime order book data from the exchange
+- Several timeframes are available for the candlestick chart
+- Create a list of favorite symbols
 
 ## Agent ruleset
 
