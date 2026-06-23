@@ -199,14 +199,17 @@ extension BinanceAPI {
     private func ticker(from ticker: TickerData) -> Ticker {
         Ticker(
             symbol: ticker.symbol,
-            turnover24h: ticker.quoteVolumeDouble
+            turnover24h: ticker.quoteVolumeDouble,
+            priceChangePercent: ticker.priceChangePercentDouble
         )
     }
 
     private struct TickerData: Decodable {
         let symbol: String
         let quoteVolume: String?
+        let priceChangePercent: String?
 
         var quoteVolumeDouble: Double { Double(quoteVolume ?? "0") ?? 0 }
+        var priceChangePercentDouble: Double { Double(priceChangePercent ?? "0") ?? 0 }
     }
 }

@@ -127,6 +127,7 @@ extension Cex {
     struct Ticker: Sendable, Hashable, Identifiable {
         let symbol: String
         let turnover24h: Double
+        let priceChangePercent: Double
 
         var id: String {
             return symbol

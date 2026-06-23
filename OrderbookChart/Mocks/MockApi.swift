@@ -79,7 +79,7 @@ struct MockApi: ApiInterface, Sendable {
     }
 
     func ticker(_ symbol: String) async throws -> Ticker {
-        Ticker(symbol: symbol, turnover24h: 10000)
+        Ticker(symbol: symbol, turnover24h: 10000, priceChangePercent: 0)
     }
 
     private struct ApiResult<Result: Decodable>: Decodable {

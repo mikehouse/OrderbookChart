@@ -9,10 +9,10 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             SidebarView(selectedCex: $selectedCex)
-                .navigationSplitViewColumnWidth(172)
+                .navigationSplitViewColumnWidth(min: 150, ideal: 172, max: 300)
         } content: {
             SidebarContentView(selectedCex: $selectedCex, selectedTicker: $selectedTicker)
-                .navigationSplitViewColumnWidth(242)
+                .navigationSplitViewColumnWidth(min: 300, ideal: 300, max: 400)
         } detail: {
             SidebarDetailsView(selectedCex: $selectedCex, selectedTicker: $selectedTicker)
         }

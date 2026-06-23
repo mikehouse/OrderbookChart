@@ -20,6 +20,7 @@ struct SidebarContentView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var tickers: [Ticker] = []
+    @State private var tickerSortRule: TickerSortRule = .turnover
     @State private var exportFormat: ExportFormat = .tradingView
     @State private var splitCount: Int = 100
     @State private var exportMessage: String?
@@ -57,6 +58,17 @@ struct SidebarContentView: View {
                             Image(systemName: "arrow.counterclockwise")
                         })
                         .buttonStyle(.borderedProminent)
+                    }
+                    HStack {
+                        Text("Sort by")
+                        Spacer()
+                        Picker("", selection: $tickerSortRule) {
+                            ForEach(TickerSortRule.allCases, id: \.self) { rule in
+                                Text(rule.title).tag(rule)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .fixedSize()
                     }
                     HStack {
                         Text("API rate limits: (\(rateLimitPercent)%)")
@@ -108,8 +120,28 @@ struct SidebarContentView: View {
                     }
                 }
                 List(tickers, id: \.symbol, selection: $selectedTicker) { ticker in
-                    Text(ticker.symbol).tag(ticker)
-
+                    HStack {
+                        Text(ticker.symbol)
+                        Spacer()
+                        if ticker.priceChangePercent < 0 {
+                            HStack {
+                                Image(systemName: "arrowtriangle.down.fill")
+                                Text(ticker.priceChangePercent, format: .number.precision(.fractionLength(2)))
+                                Text("%")
+                            }
+                            .foregroundColor(.red)
+                        } else if ticker.priceChangePercent > 0 {
+                            HStack {
+                                Image(systemName: "arrowtriangle.up.fill")
+                                Text(ticker.priceChangePercent, format: .number.precision(.fractionLength(2)))
+                                Text("%")
+                            }
+                            .foregroundColor(.green)
+                        } else {
+                            Text("0.00 %")
+                                .foregroundColor(.gray)
+                        }
+                    }.tag(ticker)
                 }
                 .scrollContentBackground(.hidden)
                 .padding(.top, -8)
@@ -122,6 +154,9 @@ struct SidebarContentView: View {
             if let exportMessage = exportMessage {
                 print(exportMessage)
             }
+        }
+        .onChange(of: tickerSortRule) {
+            tickers = sortedTickers(tickers)
         }
         .onChange(of: appContext.cexRPMService.usageByCex) { _, new in
             if let selectedCex = selectedCex {
@@ -163,20 +198,43 @@ struct SidebarContentView: View {
             switch cex {
             case .bybit:
                 let ticker = try await appContext.bybit.tickers(cache)
-                self.tickers = ticker
+                self.tickers = sortedTickers(ticker
                     .filter({ !$0.symbol.contains("-") })
                     .filter({ !$0.symbol.hasSuffix("PERP") })
-                    .sorted(by: { $0.turnover24h > $1.turnover24h })
+                    .filter({ !$0.symbol.hasSuffix("USDC") })
+                )
             case .binance:
                 let ticker = try await appContext.binance.tickers(cache)
-                self.tickers = ticker
+                self.tickers = sortedTickers(ticker
                     .filter({ !$0.symbol.contains("-") })
                     .filter({ !$0.symbol.contains("_") })
                     .filter({ !$0.symbol.hasSuffix("USDC") })
-                    .sorted(by: { $0.turnover24h > $1.turnover24h })
+                )
             }
         } catch {
             errorMessage = "\(error)"
+        }
+    }
+
+    private func sortedTickers(_ tickers: [Ticker]) -> [Ticker] {
+        func sort(by value: (Ticker) -> Double) -> [Ticker] {
+            tickers.sorted { lhs, rhs in
+                let lhsValue = value(lhs)
+                let rhsValue = value(rhs)
+                if lhsValue == rhsValue {
+                    return lhs.symbol < rhs.symbol
+                }
+                return lhsValue > rhsValue
+            }
+        }
+
+        switch tickerSortRule {
+        case .turnover:
+            return sort { $0.turnover24h }
+        case .priceChange:
+            return sort { $0.priceChangePercent }
+        case .priceChangeM:
+            return sort { abs($0.priceChangePercent) }
         }
     }
 
@@ -225,6 +283,23 @@ struct SidebarContentView: View {
             switch self {
             case .tradingView:
                 return "TradingView"
+            }
+        }
+    }
+
+    private enum TickerSortRule: CaseIterable {
+        case turnover
+        case priceChange
+        case priceChangeM
+
+        var title: String {
+            switch self {
+            case .turnover:
+                return "Turnover 24H"
+            case .priceChange:
+                return "Price Change 24H"
+            case .priceChangeM:
+                return "Price Change 24H (Abs)"
             }
         }
     }

@@ -166,6 +166,11 @@ extension BybitAPI {
             struct Symbol: Decodable {
                 let symbol: String
                 let turnover24h: String
+                let price24hPcnt: String?
+
+                var priceChangePercent: Double {
+                    Double(price24hPcnt ?? "0").map { $0 * 100 } ?? 0
+                }
             }
         }
 
@@ -173,7 +178,8 @@ extension BybitAPI {
         return holder.result.list.map { ticker in
             Ticker(
                 symbol: ticker.symbol,
-                turnover24h: Double(ticker.turnover24h)!
+                turnover24h: Double(ticker.turnover24h)!,
+                priceChangePercent: ticker.priceChangePercent
             )
         }
     }

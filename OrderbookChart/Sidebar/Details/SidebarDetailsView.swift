@@ -411,7 +411,7 @@ private enum StorageKeys: String {
     } detail: {
         SidebarDetailsView(
             selectedCex: .constant(.bybit),
-            selectedTicker: .constant(.init(symbol: "BTCUSDT", turnover24h: 5473206785.5191))
+            selectedTicker: .constant(.init(symbol: "BTCUSDT", turnover24h: 5473206785.5191, priceChangePercent: 2.31))
         )
         .navigationSplitViewColumnWidth(460)
         .environment(
