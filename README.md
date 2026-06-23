@@ -23,7 +23,9 @@ The app uses klines, orderbook and rpi_orderbook API from
 
 ## Live chart
 
-See live charts as TradingView does with realtime order book data.
+- See the live chart as TradingView does with realtime order book data.
+- Sort symbols
+- Export symbols to the TradingView format
 
 ## Take a snapshot
 
