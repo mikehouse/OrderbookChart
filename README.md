@@ -27,6 +27,8 @@ The app uses klines, orderbook and rpi_orderbook API from
 - Sort symbols (by turnover, by price change)
 - Export symbols to the TradingView format
 - Filter symbols by type: crypto, stocks, minerals, energy and currencies
+- Mark symbols as favorites
+- Most popular timeframes are supported (1m, 3m, 5m, 15m, 30m, 1h, 4h, 1d)
 
 ## Take a snapshot
 
