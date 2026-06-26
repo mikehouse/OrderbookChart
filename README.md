@@ -3,7 +3,7 @@
 
 The application draws the candlestick chart (like TradingView) and Order Book on top of it. Why? Because you cannot use realtime data from CEX to build Order Book indicator on top of the chart on TradingView.
 
-<img src="./app_orderbook_no_density.webp" alt="">
+<img src="./app_orderbook_no_density.png" alt="">
 
 ## Technologies
 
