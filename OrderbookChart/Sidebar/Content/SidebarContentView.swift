@@ -2,6 +2,120 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+private struct NotCryptoSimbols {
+
+    static let currencies = [
+        "NOK", // Norwegian Krone
+    ]
+    static let minerals = [
+        "XAU", // Gold
+        "PAXG", // 1 fine troy ounce of a physical London Good Delivery gold bar
+        "XAUT", // Tether Gold
+        "XAG", // Silver
+        "XPT", // Platinum
+        "XPD", // Palladium
+        "URNM", // Uranium
+        "COPPER", // Copper
+    ]
+    static let energy = [
+        "XLE", // Energy Select Sector SPDR Fund
+        "NATGAS", // US Natural Gas
+        "CL", // West Texas Intermediate (WTI) Crude Oil
+        "BZ", // Brent Crude Oil
+    ]
+    static let stocks = [
+        "MU", // Micron Technology Inc
+        "SNDK", // SanDisk Corporation
+        "SPCX", // SpaceX
+        "SOXL", // Direxion Daily Semiconductor Bull 3X Shares
+        "SKHYNIX", // SK Hynix Inc.
+        "MRVL", // Marvell Technology, Inc.
+        "MSTR", // MicroStrategy
+        "INTC", // Intel Corp
+        "EWY", // iShares MSCI South Korea ETF
+        "QQQ", // Invesco QQQ Trust
+        "CRCL", // Circle Internet Group
+        "CBRS", // Cerebras Systems Inc.
+        "NVDA", //  NVIDIA Corporation
+        "TSLA", // Tesla, Inc.
+        "NBIS", //  Nebius Group N.V. Class A Ordinary Shares
+        "WDC", // Western Digital Corporation
+        "GLW", // Corning Incorporated
+        "SAMSUNG",
+        "AMD",
+        "LITE", // Lumentum Holdings
+        "ARM", // Arm Holdings plc
+        "IBM",
+        "AAOI", // Applied Optoelectronics, Inc.
+        "GOOGL", // Alphabet Inc.
+        "SPY", // S&P 500 index
+        "AAPL",
+        "QCOM", // QUALCOMM Incorporated
+        "HOOD", // Robinhood Markets Inc.
+        "RKLB", // Rocket Lab USA, Inc.
+        "AVGO", // Broadcom Inc.
+        "BBX", // BlackBerry Limited
+        "TSM", // Taiwan Semiconductor Manufacturing Company
+        "AXTI", // AXT Inc.
+        "MSFT",
+        "AMZN",
+        "META", // Meta Platforms, Inc.
+        "ORCL", // Oracle Corporation
+        "DELL",
+        "BABA", // Alibaba Group
+        "FLNC", // Fluence Energy
+        "PLTR", // Palantir Technologies Inc.
+        "BE", // Bloom Energy Corporation
+        "CRWV", // CoreWeave
+        "COHR", // Coherent Corp.
+        "AMAT", // Applied Materials
+        "STXX", // Seagate Technology Holdings PLC
+        "OPENAI", // Pre-IPO OpenAI
+        "ASTS", // AST SpaceMobile, Inc.
+        "USAR", // USA Rare Earth, Inc.
+        "BMNR", // BitMine Immersion Technologies, Inc.
+        "ALAB", // Astera Labs, Inc.
+        "EWJ", // iShares MSCI Japan ETF
+        "SMCI", // Super Micro Computer
+        "UVXY", // ProShares Ultra VIX Short-Term Futures ETF
+        "ANTHROPIC", // Pre-IPO Anthropic PBC
+        "BX", // Blackstone Inc.
+        "HPE", // Hewlett Packard Enterprise
+        "CRWD", // CrowdStrike Holdings
+        "IREN", // Iris Energy
+        "HIMS", // Hims & Hers Health, Inc.
+        "NOW", // ServiceNow
+        "LRCX", // Lam Research Corporation
+        "HYUNDAI",
+        "CIEN", // Ciena Corporation
+        "ASML",
+        "EBAY",
+        "LLY", // Eli Lilly and Company
+        "NFLX",
+        "KLAC", //  KLA Corporation
+        "CSCO",
+        "SONY",
+        "BRKB", // Berkshire Hathaway Inc. Class B
+        "ADBE", // Adobe Inc.
+        "DKNG", // DraftKings Inc.
+        "HD", // The Home Depot
+        "NVO", // Novo Nordisk A/S
+        "PAYP", // PayPay Corporation
+        "CRM", // Salesforce, Inc.
+        "UBER",
+        "WMT", // Walmart Inc
+        "JPM", // JPMorgan Chase
+        "ZM", // Zoom Video Communications, Inc.
+        "DIS", // Walt Disney Company
+        "COST", // Costco Wholesale Corporation
+        "IWM", // iShares Russell 2000 ETF
+        "EWZ", // iShares MSCI Brazil ETF
+        "RIVN", // Rivian Automotive
+        "GME", // GameStop
+        "DRAM" // Roundhill Memory ETF
+    ]
+}
+
 struct SidebarContentView: View {
 
     @Binding private var selectedCex: Cex?
@@ -19,10 +133,16 @@ struct SidebarContentView: View {
 
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var allTickers: [Ticker] = []
     @State private var tickers: [Ticker] = []
     @State private var customTickerSections: [TickerSection] = []
     @State private var newSectionName = ""
     @State private var tickerSortRule: TickerSortRule = .turnover
+    @State private var showsCryptoTickers = true
+    @State private var showsStockTickers = false
+    @State private var showsCurrencyTickers = false
+    @State private var showsMineralTickers = false
+    @State private var showsEnergyTickers = false
     @State private var exportFormat: ExportFormat = .tradingView
     @State private var splitCount: Int = 100
     @State private var exportMessage: String?
@@ -44,8 +164,8 @@ struct SidebarContentView: View {
                 }
             } else if isLoading {
                 ProgressView("Loading tickers…")
-            } else if tickers.isEmpty {
-                Text(selectedCex == nil ? "Select an exchange" : "No tickers available")
+            } else if allTickers.isEmpty {
+                Text("No tickers available")
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading) {
@@ -61,6 +181,7 @@ struct SidebarContentView: View {
                         })
                         .buttonStyle(.borderedProminent)
                     }
+                    tickerCategoryFilters
                     HStack {
                         Text("Sort by")
                         Spacer()
@@ -95,7 +216,7 @@ struct SidebarContentView: View {
 
                         if exportFormat == .tradingView {
                             Picker("", selection: $splitCount) {
-                                ForEach([100, 150, 200, 250], id: \.self) { count in
+                                ForEach([100, 150, 200, 250, 300], id: \.self) { count in
                                     Text("\(count)").tag(count)
                                 }
                             }
@@ -156,6 +277,7 @@ struct SidebarContentView: View {
         }
         .task {
             loadCustomTickerSections()
+            loadTickerCategoryFilters()
         }
         .onChange(of: exportMessage) {
             if let exportMessage = exportMessage {
@@ -166,7 +288,22 @@ struct SidebarContentView: View {
             storeCustomTickerSections()
         }
         .onChange(of: tickerSortRule) {
-            tickers = sortedTickers(tickers)
+            applyTickerCategoryFilters()
+        }
+        .onChange(of: showsCryptoTickers) {
+            tickerCategoryFilterDidChange()
+        }
+        .onChange(of: showsStockTickers) {
+            tickerCategoryFilterDidChange()
+        }
+        .onChange(of: showsCurrencyTickers) {
+            tickerCategoryFilterDidChange()
+        }
+        .onChange(of: showsMineralTickers) {
+            tickerCategoryFilterDidChange()
+        }
+        .onChange(of: showsEnergyTickers) {
+            tickerCategoryFilterDidChange()
         }
         .onChange(of: appContext.cexRPMService.usageByCex) { _, new in
             if let selectedCex = selectedCex {
@@ -194,6 +331,22 @@ struct SidebarContentView: View {
 
     private var trimmedNewSectionName: String {
         newSectionName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var tickerCategoryFilters: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Toggle("Crypto", isOn: $showsCryptoTickers)
+                Toggle("Stocks", isOn: $showsStockTickers)
+                Toggle("Energy", isOn: $showsEnergyTickers)
+            }
+            HStack {
+                Toggle("Currencies", isOn: $showsCurrencyTickers)
+                Toggle("Minerals", isOn: $showsMineralTickers)
+            }
+        }
+        .toggleStyle(.checkbox)
+        .padding(.bottom, 4)
     }
 
     private func addTickerSection() {
@@ -227,6 +380,71 @@ struct SidebarContentView: View {
         } catch {
             print("Failed to store ticker sections: \(error)")
         }
+    }
+
+    private func loadTickerCategoryFilters() {
+        showsCryptoTickers = storedBool(for: .showsCryptoTickers, defaultValue: true)
+        showsStockTickers = storedBool(for: .showsStockTickers, defaultValue: false)
+        showsCurrencyTickers = storedBool(for: .showsCurrencyTickers, defaultValue: false)
+        showsMineralTickers = storedBool(for: .showsMineralTickers, defaultValue: false)
+        showsEnergyTickers = storedBool(for: .showsEnergyTickers, defaultValue: false)
+        applyTickerCategoryFilters()
+    }
+
+    private func storedBool(for key: StorageKeys, defaultValue: Bool) -> Bool {
+        guard appContext.userDefaults.object(forKey: key.rawValue) != nil else {
+            return defaultValue
+        }
+
+        return appContext.userDefaults.bool(forKey: key.rawValue)
+    }
+
+    private func storeTickerCategoryFilters() {
+        appContext.userDefaults.set(showsCryptoTickers, forKey: StorageKeys.showsCryptoTickers.rawValue)
+        appContext.userDefaults.set(showsStockTickers, forKey: StorageKeys.showsStockTickers.rawValue)
+        appContext.userDefaults.set(showsCurrencyTickers, forKey: StorageKeys.showsCurrencyTickers.rawValue)
+        appContext.userDefaults.set(showsMineralTickers, forKey: StorageKeys.showsMineralTickers.rawValue)
+        appContext.userDefaults.set(showsEnergyTickers, forKey: StorageKeys.showsEnergyTickers.rawValue)
+    }
+
+    private func tickerCategoryFilterDidChange() {
+        storeTickerCategoryFilters()
+        applyTickerCategoryFilters()
+    }
+
+    private func applyTickerCategoryFilters() {
+        tickers = sortedTickers(allTickers.filter(shouldShowTicker))
+    }
+
+    private func shouldShowTicker(_ ticker: Ticker) -> Bool {
+        switch tickerCategory(for: ticker.symbol) {
+        case .crypto:
+            return showsCryptoTickers
+        case .stocks:
+            return showsStockTickers
+        case .currencies:
+            return showsCurrencyTickers
+        case .minerals:
+            return showsMineralTickers
+        case .energy:
+            return showsEnergyTickers
+        }
+    }
+
+    private func tickerCategory(for symbol: String) -> TickerCategory {
+        if NotCryptoSimbols.stocks.contains(where: { symbol.hasPrefix($0) }) {
+            return .stocks
+        }
+        if NotCryptoSimbols.currencies.contains(where: { symbol.hasPrefix($0) }) {
+            return .currencies
+        }
+        if NotCryptoSimbols.minerals.contains(where: { symbol.hasPrefix($0) }) {
+            return .minerals
+        }
+        if NotCryptoSimbols.energy.contains(where: { symbol.hasPrefix($0) }) {
+            return .energy
+        }
+        return .crypto
     }
 
     @ViewBuilder
@@ -286,7 +504,7 @@ struct SidebarContentView: View {
     }
 
     private func tickers(in section: TickerSection) -> [Ticker] {
-        let tickerBySymbol = Dictionary(uniqueKeysWithValues: tickers.map { ($0.symbol, $0) })
+        let tickerBySymbol = Dictionary(uniqueKeysWithValues: allTickers.map { ($0.symbol, $0) })
         return section.symbols.compactMap { tickerBySymbol[$0] }
     }
 
@@ -331,6 +549,7 @@ struct SidebarContentView: View {
 
     private func loadForCurrentCex(cache: Bool) async {
         guard let cex = selectedCex else {
+            allTickers = []
             tickers = []
             selectedTicker = nil
             errorMessage = nil
@@ -345,19 +564,23 @@ struct SidebarContentView: View {
             switch cex {
             case .bybit:
                 let ticker = try await appContext.bybit.tickers(cache)
-                self.tickers = sortedTickers(ticker
+                allTickers = ticker
                     .filter({ !$0.symbol.contains("-") })
                     .filter({ !$0.symbol.hasSuffix("PERP") })
                     .filter({ !$0.symbol.hasSuffix("USDC") })
+                    .filter({ !$0.symbol.hasPrefix("USDC") })
                     .filter({ !$0.symbol.hasPrefix("USD") })
-                )
+                applyTickerCategoryFilters()
             case .binance:
                 let ticker = try await appContext.binance.tickers(cache)
-                self.tickers = sortedTickers(ticker
+                allTickers = ticker
                     .filter({ !$0.symbol.contains("-") })
                     .filter({ !$0.symbol.contains("_") })
                     .filter({ !$0.symbol.hasSuffix("USDC") })
-                )
+                    .filter({ !$0.symbol.hasPrefix("USDC") })
+                    .filter({ !$0.symbol.hasPrefix("BTCUSD1") })
+                    .filter({ !$0.symbol.hasPrefix("ETHBTC") })
+                applyTickerCategoryFilters()
             }
         } catch {
             errorMessage = "\(error)"
@@ -438,6 +661,19 @@ struct SidebarContentView: View {
 
     private enum StorageKeys: String {
         case customTickerSections
+        case showsCryptoTickers
+        case showsStockTickers
+        case showsCurrencyTickers
+        case showsMineralTickers
+        case showsEnergyTickers
+    }
+
+    private enum TickerCategory {
+        case crypto
+        case stocks
+        case currencies
+        case minerals
+        case energy
     }
 
     private enum ExportFormat: CaseIterable {
