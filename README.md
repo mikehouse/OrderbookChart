@@ -24,8 +24,9 @@ The app uses klines, orderbook and rpi_orderbook API from
 ## Live chart
 
 - See the live chart as TradingView does with realtime order book data.
-- Sort symbols
+- Sort symbols (by turnover, by price change)
 - Export symbols to the TradingView format
+- Filter symbols by type: crypto, stocks, minerals, energy and currencies
 
 ## Take a snapshot
 
