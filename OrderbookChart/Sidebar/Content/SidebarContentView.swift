@@ -147,6 +147,7 @@ struct SidebarContentView: View {
     @State private var splitCount: Int = 100
     @State private var exportMessage: String?
     @State private var isSelectingExportDirectory = false
+    @State private var exportingSection: TickerSection?
     @State private var rateLimitPercent: Int = 0
 
     var body: some View {
@@ -199,6 +200,7 @@ struct SidebarContentView: View {
                     }
                     HStack(spacing: 8) {
                         Button("Export") {
+                            exportingSection = nil
                             isSelectingExportDirectory = true
                         }
                         .buttonStyle(.borderedProminent)
@@ -316,21 +318,37 @@ struct SidebarContentView: View {
             allowedContentTypes: [.folder],
             allowsMultipleSelection: false
         ) { result in
-            switch result {
-            case .success(let urls):
-                guard let directoryURL = urls.first else {
-                    exportMessage = "Export canceled."
-                    return
-                }
-                exportTickers(to: directoryURL)
-            case .failure(let error):
-                exportMessage = "Export failed: \(error.localizedDescription)"
-            }
+            handleExportDirectorySelection(result)
         }
     }
 
     private var trimmedNewSectionName: String {
         newSectionName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func handleExportDirectorySelection(_ result: Result<[URL], any Error>) {
+        defer {
+            exportingSection = nil
+        }
+
+        switch result {
+        case .success(let urls):
+            guard let directoryURL = urls.first else {
+                exportMessage = "Export canceled."
+                return
+            }
+            if let exportingSection {
+                exportTickers(
+                    tickers(in: exportingSection),
+                    to: directoryURL,
+                    fileNamePrefix: exportingSection.name
+                )
+            } else {
+                exportTickers(tickers, to: directoryURL)
+            }
+        case .failure(let error):
+            exportMessage = "Export failed: \(error.localizedDescription)"
+        }
     }
 
     private var tickerCategoryFilters: some View {
@@ -537,6 +555,15 @@ struct SidebarContentView: View {
         HStack {
             Text(section.name)
             Spacer()
+            Button {
+                exportingSection = section
+                isSelectingExportDirectory = true
+            } label: {
+                Image(systemName: "square.and.arrow.up")
+            }
+            .buttonStyle(.borderless)
+            .help("Export section")
+            .disabled(tickers(in: section).isEmpty)
             Button(role: .destructive) {
                 deleteTickerSection(section)
             } label: {
@@ -609,7 +636,11 @@ struct SidebarContentView: View {
         }
     }
 
-    private func exportTickers(to directoryURL: URL) {
+    private func exportTickers(
+        _ tickersToExport: [Ticker],
+        to directoryURL: URL,
+        fileNamePrefix: String? = nil
+    ) {
         guard let selectedCex else {
             exportMessage = "Select an exchange first."
             return
@@ -625,14 +656,15 @@ struct SidebarContentView: View {
         switch exportFormat {
         case .tradingView:
             do {
-                let chunks = tickers.chunked(by: splitCount)
+                let chunks = tickersToExport.chunked(by: splitCount)
                 let timestamp = Self.exportDateFormatter.string(from: Date())
                 let cexName = selectedCex.displayName
                 let cexNameUppercased = cexName.uppercased()
+                let fileNamePrefix = safeFileNamePrefix(fileNamePrefix)
 
                 for (index, chunk) in chunks.enumerated() {
                     let symbols = chunk.map { "\(cexNameUppercased):\($0.symbol).P" }.joined(separator: ",")
-                    let fileName = "\(cexName)-\(chunk.count)-\(timestamp)-\(index + 1).txt"
+                    let fileName = "\(fileNamePrefix)\(cexName)-\(chunk.count)-\(timestamp)-\(index + 1).txt"
                     let fileURL = directoryURL.appendingPathComponent(fileName)
                     guard let data = symbols.data(using: .utf8) else {
                         throw CocoaError(.fileWriteUnknown)
@@ -645,6 +677,17 @@ struct SidebarContentView: View {
                 exportMessage = "Export failed: \(error.localizedDescription)"
             }
         }
+    }
+
+    private func safeFileNamePrefix(_ prefix: String?) -> String {
+        guard let prefix else { return "" }
+
+        let safePrefix = prefix
+            .components(separatedBy: Self.fileNameUnsafeCharacters)
+            .joined(separator: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return safePrefix.isEmpty ? "" : "\(safePrefix)-"
     }
 
     private struct TickerSection: Identifiable, Hashable, Codable {
@@ -709,6 +752,8 @@ struct SidebarContentView: View {
         formatter.dateFormat = "yyyy-MM-dd-HH-mm"
         return formatter
     }()
+
+    private static let fileNameUnsafeCharacters = CharacterSet(charactersIn: "/:")
 }
 
 private extension Array {
