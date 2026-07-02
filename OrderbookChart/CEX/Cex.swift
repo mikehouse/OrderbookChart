@@ -5,15 +5,15 @@ import SwiftUI
 protocol ApiInterface: Sendable {
 
     @concurrent
-    func kLines(_ symbol: String, interval: Cex.Interval, limit: Int) async throws -> [Candle]
+    func kLines(_ symbol: String, market: Cex.Market, interval: Cex.Interval, limit: Int) async throws -> [Candle]
     @concurrent
-    func orderbook(_ symbol: String) async throws -> Orderbook
+    func orderbook(_ symbol: String, market: Cex.Market) async throws -> Orderbook
     @concurrent
-    func rpiOrderbook(_ symbol: String) async throws -> Orderbook
+    func rpiOrderbook(_ symbol: String, market: Cex.Market) async throws -> Orderbook?
     @concurrent
-    func tickers(_ cache: Bool) async throws -> [Ticker]
+    func tickers(_ market: Cex.Market, cache: Bool) async throws -> [Ticker]
     @concurrent
-    func ticker(_ symbol: String) async throws -> Ticker
+    func ticker(_ symbol: String, market: Cex.Market) async throws -> Ticker
 }
 
 extension ApiInterface {
@@ -49,6 +49,36 @@ enum Cex: String, CaseIterable, Sendable, Identifiable {
             return "bybit"
         case .binance:
             return "binance"
+        }
+    }
+}
+
+extension Cex {
+
+    enum Market: String, Sendable, Hashable, CaseIterable, Identifiable {
+        case futures
+        case spot
+
+        var id: String {
+            return rawValue
+        }
+
+        var title: String {
+            switch self {
+            case .futures:
+                return "Futures"
+            case .spot:
+                return "Spot"
+            }
+        }
+
+        var bybitCategory: String {
+            switch self {
+            case .futures:
+                return "linear"
+            case .spot:
+                return "spot"
+            }
         }
     }
 }
@@ -128,17 +158,31 @@ extension Cex {
         let symbol: String
         let turnover24h: Double
         let priceChangePercent: Double
+        let market: Cex.Market
 
         var id: String {
-            return symbol
+            return "\(market.rawValue)-\(symbol)"
+        }
+
+        init(
+            symbol: String,
+            turnover24h: Double,
+            priceChangePercent: Double,
+            market: Cex.Market = .futures
+        ) {
+            self.symbol = symbol
+            self.turnover24h = turnover24h
+            self.priceChangePercent = priceChangePercent
+            self.market = market
         }
 
         func hash(into hasher: inout Hasher) {
             hasher.combine(symbol)
+            hasher.combine(market)
         }
 
         static func == (lhs: Ticker, rhs: Ticker) -> Bool {
-            return lhs.symbol == rhs.symbol
+            return lhs.symbol == rhs.symbol && lhs.market == rhs.market
         }
     }
 }

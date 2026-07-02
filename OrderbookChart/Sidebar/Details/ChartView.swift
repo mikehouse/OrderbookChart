@@ -420,10 +420,10 @@ private struct PreviewWrapper: View {
                 .task {
                     let api = MockApi.bybitBTC1Min
                     let (candles, orderbook, rpiOrderbook, ticker) = try! await (
-                        api.kLines("", interval: .min1, limit: 0),
-                        api.orderbook(""),
-                        api.rpiOrderbook(""),
-                        api.ticker("BTCUSDT"),
+                        api.kLines("", market: .futures, interval: .min1, limit: 0),
+                        api.orderbook("", market: .futures),
+                        api.rpiOrderbook("", market: .futures),
+                        api.ticker("BTCUSDT", market: .futures),
                     )
                     self.candles = candles
                     self.orderbook = orderbook

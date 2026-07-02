@@ -10,18 +10,21 @@ final class CexRPMService {
         case ticker
         case tickers
 
-        func weight(for cex: Cex) -> Int {
+        func weight(for cex: Cex, market: Cex.Market) -> Int {
             switch cex {
             case .binance:
-                return binanceWeight
+                return binanceWeight(for: market)
             case .bybit:
                 return 0
             }
         }
 
-        private var binanceWeight: Int {
+        private func binanceWeight(for market: Cex.Market) -> Int {
             switch self {
             case .kLines(let limit):
+                if market == .spot {
+                    return 2
+                }
                 switch limit {
                 case ..<100:
                     return 1
@@ -33,13 +36,33 @@ final class CexRPMService {
                     return 10
                 }
             case .orderbook:
-                return 20
+                switch market {
+                case .futures:
+                    return 20
+                case .spot:
+                    return 50
+                }
             case .rpiOrderbook:
-                return 20
+                switch market {
+                case .futures:
+                    return 20
+                case .spot:
+                    return 0
+                }
             case .ticker:
-                return 1
+                switch market {
+                case .futures:
+                    return 1
+                case .spot:
+                    return 2
+                }
             case .tickers:
-                return 40
+                switch market {
+                case .futures:
+                    return 40
+                case .spot:
+                    return 80
+                }
             }
         }
     }
@@ -56,8 +79,8 @@ final class CexRPMService {
     init() {}
 
     @discardableResult
-    func increment(_ cex: Cex, api: Api) -> Bool {
-        increment(cex, api: api.weight(for: cex))
+    func increment(_ cex: Cex, market: Cex.Market = .futures, api: Api) -> Bool {
+        increment(cex, api: api.weight(for: cex, market: market))
     }
 
     @discardableResult

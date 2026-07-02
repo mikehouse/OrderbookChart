@@ -24,6 +24,15 @@ final class BybitAPI: ApiInterface {
     private struct ApiResult<Result: Decodable>: Decodable {
         let result: Result
     }
+
+    fileprivate func tickersCacheFileName(for market: Cex.Market) -> String {
+        switch market {
+        case .futures:
+            return "tickers_Bybit.json"
+        case .spot:
+            return "tickers_Bybit_spot.json"
+        }
+    }
 }
 
 extension BybitAPI {
@@ -32,14 +41,14 @@ extension BybitAPI {
 
     /// limit: 1 ... 1000
     /// interval: 1, 3, 5, 15, 30, 60
-    func kLines(_ symbol: String, interval: Cex.Interval, limit: Int) async throws -> [Candle] {
-        try await kLines(symbol, interval: interval.bybit, limit: limit)
+    func kLines(_ symbol: String, market: Cex.Market, interval: Cex.Interval, limit: Int) async throws -> [Candle] {
+        try await kLines(symbol, market: market, interval: interval.bybit, limit: limit)
     }
 
-    func kLines(_ symbol: String, interval: Interval, limit: Int) async throws -> [Candle] {
+    func kLines(_ symbol: String, market: Cex.Market, interval: Interval, limit: Int) async throws -> [Candle] {
         var components = URLComponents(string: host.rawValue + "/v5/market/kline")
         components?.queryItems = [
-            URLQueryItem(name: "category", value: "linear"),
+            URLQueryItem(name: "category", value: market.bybitCategory),
             URLQueryItem(name: "symbol", value: symbol),
             URLQueryItem(name: "interval", value: interval.rawValue),
             URLQueryItem(name: "limit", value: "\(limit)")
@@ -71,19 +80,25 @@ extension BybitAPI {
     typealias Orderbook = Cex.Orderbook
 
     /// limit: 1...500
-    func orderbook(_ symbol: String) async throws -> Orderbook {
-        try await _orderbook(symbol, limit: 500, path: "orderbook")
+    func orderbook(_ symbol: String, market: Cex.Market) async throws -> Orderbook {
+        try await _orderbook(symbol, market: market, limit: 500, path: "orderbook", sizeIndex: 1)
     }
 
     /// limit: 1...50
-    func rpiOrderbook(_ symbol: String) async throws -> Orderbook {
-        try await _orderbook(symbol, limit: 50, path: "rpi_orderbook")
+    func rpiOrderbook(_ symbol: String, market: Cex.Market) async throws -> Orderbook? {
+        try await _orderbook(symbol, market: market, limit: 50, path: "rpi_orderbook", sizeIndex: 2)
     }
 
-    private func _orderbook(_ symbol: String, limit: Int, path: String = "orderbook") async throws -> Orderbook {
+    private func _orderbook(
+        _ symbol: String,
+        market: Cex.Market,
+        limit: Int,
+        path: String = "orderbook",
+        sizeIndex: Int
+    ) async throws -> Orderbook {
         var components = URLComponents(string: host.rawValue + "/v5/market/\(path)")
         components?.queryItems = [
-            URLQueryItem(name: "category", value: "linear"),
+            URLQueryItem(name: "category", value: market.bybitCategory),
             URLQueryItem(name: "symbol", value: symbol),
             URLQueryItem(name: "limit", value: "\(limit)")
         ]
@@ -101,10 +116,10 @@ extension BybitAPI {
         return Orderbook(
             symbol: holder.result.s,
             bids: holder.result.b.map {
-                Orderbook.Level(price: Double($0[0])!, size: Double($0[1])!)
+                Orderbook.Level(price: Double($0[0])!, size: Double($0[safe: sizeIndex] ?? $0[1])!)
             },
             asks: holder.result.a.map {
-                Orderbook.Level(price: Double($0[0])!, size: Double($0[1])!)
+                Orderbook.Level(price: Double($0[0])!, size: Double($0[safe: sizeIndex] ?? $0[1])!)
             },
             timestamp: holder.result.ts / 1000.0
         )
@@ -115,11 +130,11 @@ extension BybitAPI {
 
     typealias Ticker = Cex.Ticker
 
-    func tickers(_ cache: Bool = false) async throws -> [Ticker] {
+    func tickers(_ market: Cex.Market, cache: Bool = false) async throws -> [Ticker] {
         var tickers: [Ticker] = []
         if cache {
             do {
-                tickers = try await tickersCache()
+                tickers = try await tickersCache(market)
             } catch {
                 print("Cache is broken, fetching from API. \(error)")
             }
@@ -127,39 +142,39 @@ extension BybitAPI {
         if !tickers.isEmpty {
             return tickers
         }
-        print("Fetching tickers from Bybit API.")
+        print("Fetching \(market.title) tickers from Bybit API.")
         var components = URLComponents(string: host.rawValue + "/v5/market/tickers")
         components?.queryItems = [
-            URLQueryItem(name: "category", value: "linear")
+            URLQueryItem(name: "category", value: market.bybitCategory)
         ]
         let url = components?.url!
         let data = try await self.data(url!, session: session)
-        try await FileService.shared.write(data, name: "tickers_Bybit.json")
-        return try self.tickers(data: data)
+        try await FileService.shared.write(data, name: tickersCacheFileName(for: market))
+        return try self.tickers(data: data, market: market)
     }
 
-    func ticker(_ symbol: String) async throws -> Ticker {
+    func ticker(_ symbol: String, market: Cex.Market) async throws -> Ticker {
         var components = URLComponents(string: host.rawValue + "/v5/market/tickers")
         components?.queryItems = [
-            URLQueryItem(name: "category", value: "linear"),
+            URLQueryItem(name: "category", value: market.bybitCategory),
             URLQueryItem(name: "symbol", value: symbol)
         ]
         let url = components?.url!
         let data = try await self.data(url!, session: session)
-        guard let ticker = try self.tickers(data: data).first else {
+        guard let ticker = try self.tickers(data: data, market: market).first else {
             throw ApiInterfaceError.tickerNotFound(symbol: symbol)
         }
         return ticker
     }
 
-    private func tickersCache() async throws -> [Ticker] {
-        if let data = try await FileService.shared.read("tickers_Bybit.json") {
-            return try self.tickers(data: data)
+    private func tickersCache(_ market: Cex.Market) async throws -> [Ticker] {
+        if let data = try await FileService.shared.read(tickersCacheFileName(for: market)) {
+            return try self.tickers(data: data, market: market)
         }
         return []
     }
 
-    private func tickers(data: Data) throws -> [Ticker] {
+    private func tickers(data: Data, market: Cex.Market) throws -> [Ticker] {
         struct Holder: Decodable {
             let list: [Symbol]
 
@@ -179,7 +194,8 @@ extension BybitAPI {
             Ticker(
                 symbol: ticker.symbol,
                 turnover24h: Double(ticker.turnover24h)!,
-                priceChangePercent: ticker.priceChangePercent
+                priceChangePercent: ticker.priceChangePercent,
+                market: market
             )
         }
     }
@@ -193,5 +209,11 @@ extension BybitAPI {
                 return "Ticker not found: \(symbol)"
             }
         }
+    }
+}
+
+private extension Array {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }

@@ -345,11 +345,12 @@ struct SidebarDetailsView: View {
         case .bybit:
             api = appContext.bybit
         }
+        let market = selectedTicker.market
         let (candles, orderbook, rpiOrderbook, ticker) = try await (
-            api.kLines(selectedTicker.symbol, interval: timeframe, limit: candleLimit),
-            api.orderbook(selectedTicker.symbol),
-            api.rpiOrderbook(selectedTicker.symbol),
-            api.ticker(selectedTicker.symbol)
+            api.kLines(selectedTicker.symbol, market: market, interval: timeframe, limit: candleLimit),
+            api.orderbook(selectedTicker.symbol, market: market),
+            api.rpiOrderbook(selectedTicker.symbol, market: market),
+            api.ticker(selectedTicker.symbol, market: market)
         )
         return (candles, orderbook, rpiOrderbook, ticker)
     }

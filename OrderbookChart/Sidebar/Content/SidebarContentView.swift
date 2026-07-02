@@ -135,6 +135,7 @@ struct SidebarContentView: View {
     @State private var errorMessage: String?
     @State private var allTickers: [Ticker] = []
     @State private var tickers: [Ticker] = []
+    @State private var selectedMarket = Cex.Market.futures
     @State private var customTickerSections: [TickerSection] = []
     @State private var newSectionName = ""
     @State private var tickerSortRule: TickerSortRule = .turnover
@@ -149,6 +150,7 @@ struct SidebarContentView: View {
     @State private var isSelectingExportDirectory = false
     @State private var exportingSection: TickerSection?
     @State private var rateLimitPercent: Int = 0
+    @State private var hasLoadedInitialState = false
 
     var body: some View {
         Group {
@@ -173,6 +175,14 @@ struct SidebarContentView: View {
                     HStack {
                         Text("Tickers: \(tickers.count)")
                         Spacer()
+                        Picker("", selection: $selectedMarket) {
+                            ForEach(Cex.Market.allCases) { market in
+                                Text(market.title).tag(market)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .fixedSize()
                         Button(action: {
                             Task {
                                 await loadForCurrentCex(cache: false)
@@ -274,12 +284,28 @@ struct SidebarContentView: View {
                 .padding(.top, -8)
             }
         }
-        .task(id: selectedCex?.id) {
-            await loadForCurrentCex(cache: true)
-        }
         .task {
             loadCustomTickerSections()
             loadTickerCategoryFilters()
+            loadSelectedMarket()
+            await loadForCurrentCex(cache: true)
+            hasLoadedInitialState = true
+        }
+        .onChange(of: selectedCex) {
+            Task {
+                await loadForCurrentCex(cache: true)
+            }
+        }
+        .onChange(of: selectedMarket) {
+            storeSelectedMarket()
+            selectedTicker = nil
+            guard hasLoadedInitialState else {
+                return
+            }
+
+            Task {
+                await loadForCurrentCex(cache: true)
+            }
         }
         .onChange(of: exportMessage) {
             if let exportMessage = exportMessage {
@@ -415,6 +441,20 @@ struct SidebarContentView: View {
         }
 
         return appContext.userDefaults.bool(forKey: key.rawValue)
+    }
+
+    private func loadSelectedMarket() {
+        guard let rawValue = appContext.userDefaults.string(forKey: StorageKeys.selectedMarket.rawValue),
+              let market = Cex.Market(rawValue: rawValue)
+        else {
+            return
+        }
+
+        selectedMarket = market
+    }
+
+    private func storeSelectedMarket() {
+        appContext.userDefaults.set(selectedMarket.rawValue, forKey: StorageKeys.selectedMarket.rawValue)
     }
 
     private func storeTickerCategoryFilters() {
@@ -586,25 +626,29 @@ struct SidebarContentView: View {
         isLoading = true
         defer { isLoading = false }
         errorMessage = nil
+        let market = selectedMarket
 
         do {
             switch cex {
             case .bybit:
-                let ticker = try await appContext.bybit.tickers(cache)
+                let ticker = try await appContext.bybit.tickers(market, cache: cache)
                 allTickers = ticker
                     .filter({ !$0.symbol.contains("-") })
                     .filter({ !$0.symbol.hasSuffix("PERP") })
                     .filter({ !$0.symbol.hasSuffix("USDC") })
                     .filter({ !$0.symbol.hasPrefix("USDC") })
                     .filter({ !$0.symbol.hasPrefix("USD") })
+                    .filter({ $0.symbol.hasSuffix("USDT") })
                 applyTickerCategoryFilters()
             case .binance:
-                let ticker = try await appContext.binance.tickers(cache)
+                let ticker = try await appContext.binance.tickers(market, cache: cache)
                 allTickers = ticker
                     .filter({ !$0.symbol.contains("-") })
                     .filter({ !$0.symbol.contains("_") })
                     .filter({ !$0.symbol.hasSuffix("USDC") })
+                    .filter({ $0.symbol.hasSuffix("USDT") })
                     .filter({ !$0.symbol.hasPrefix("USDC") })
+                    .filter({ !$0.symbol.hasPrefix("USD1") })
                     .filter({ !$0.symbol.hasPrefix("BTCUSD1") })
                     .filter({ !$0.symbol.hasPrefix("ETHBTC") })
                 applyTickerCategoryFilters()
@@ -663,8 +707,11 @@ struct SidebarContentView: View {
                 let fileNamePrefix = safeFileNamePrefix(fileNamePrefix)
 
                 for (index, chunk) in chunks.enumerated() {
-                    let symbols = chunk.map { "\(cexNameUppercased):\($0.symbol).P" }.joined(separator: ",")
-                    let fileName = "\(fileNamePrefix)\(cexName)-\(chunk.count)-\(timestamp)-\(index + 1).txt"
+                    let symbols = chunk.map { ticker in
+                        let marketSuffix = ticker.market == .futures ? ".P" : ""
+                        return "\(cexNameUppercased):\(ticker.symbol)\(marketSuffix)"
+                    }.joined(separator: ",")
+                    let fileName = "\(fileNamePrefix)\(cexName)-\(selectedMarket.title)-\(chunk.count)-\(timestamp)-\(index + 1).txt"
                     let fileURL = directoryURL.appendingPathComponent(fileName)
                     guard let data = symbols.data(using: .utf8) else {
                         throw CocoaError(.fileWriteUnknown)
@@ -709,6 +756,7 @@ struct SidebarContentView: View {
         case showsCurrencyTickers
         case showsMineralTickers
         case showsEnergyTickers
+        case selectedMarket
     }
 
     private enum TickerCategory {

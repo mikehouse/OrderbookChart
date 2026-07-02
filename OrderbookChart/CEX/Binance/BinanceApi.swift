@@ -5,6 +5,7 @@ final class BinanceAPI: ApiInterface {
 
     enum Host: String {
         case main = "https://fapi.binance.com"
+        case spot = "https://api.binance.com"
     }
 
     enum Interval: String, Sendable, Hashable {
@@ -26,6 +27,24 @@ final class BinanceAPI: ApiInterface {
     init(cexRPMService: CexRPMService) {
         self.cexRPMService = cexRPMService
     }
+
+    fileprivate func endpoint(_ path: String, market: Cex.Market) -> String {
+        switch market {
+        case .futures:
+            return host.rawValue + "/fapi/v1/\(path)"
+        case .spot:
+            return Host.spot.rawValue + "/api/v3/\(path)"
+        }
+    }
+
+    fileprivate func tickersCacheFileName(for market: Cex.Market) -> String {
+        switch market {
+        case .futures:
+            return "tickers_Binance.json"
+        case .spot:
+            return "tickers_Binance_spot.json"
+        }
+    }
 }
 
 extension BinanceAPI {
@@ -34,19 +53,19 @@ extension BinanceAPI {
 
     /// limit: 1...1500 (default 500)
     /// interval: 1, 3, 5, 15, 30, 60
-    func kLines(_ symbol: String, interval: Cex.Interval, limit: Int) async throws -> [Candle] {
-        try await kLines(symbol, interval: interval.binance, limit: limit)
+    func kLines(_ symbol: String, market: Cex.Market, interval: Cex.Interval, limit: Int) async throws -> [Candle] {
+        try await kLines(symbol, market: market, interval: interval.binance, limit: limit)
     }
 
-    func kLines(_ symbol: String, interval: Interval, limit: Int) async throws -> [Candle] {
-        var components = URLComponents(string: host.rawValue + "/fapi/v1/klines")
+    func kLines(_ symbol: String, market: Cex.Market, interval: Interval, limit: Int) async throws -> [Candle] {
+        var components = URLComponents(string: endpoint("klines", market: market))
         components?.queryItems = [
             URLQueryItem(name: "symbol", value: symbol),
             URLQueryItem(name: "interval", value: interval.rawValue),
             URLQueryItem(name: "limit", value: "\(limit)")
         ]
         let url = components?.url!
-        cexRPMService.increment(.binance, api: .kLines(limit: limit))
+        cexRPMService.increment(.binance, market: market, api: .kLines(limit: limit))
         let data = try await self.data(url!, session: session)
 
         // Binance returns array of arrays directly
@@ -104,18 +123,22 @@ extension BinanceAPI {
 
     typealias Orderbook = Cex.Orderbook
 
-    func orderbook(_ symbol: String) async throws -> Orderbook {
-        cexRPMService.increment(.binance, api: .orderbook)
-        return try await _orderbook(symbol, path: "depth", limit: 1000)
+    func orderbook(_ symbol: String, market: Cex.Market) async throws -> Orderbook {
+        cexRPMService.increment(.binance, market: market, api: .orderbook)
+        return try await _orderbook(symbol, market: market, path: "depth", limit: 1000)
     }
 
-    func rpiOrderbook(_ symbol: String) async throws -> Orderbook {
-        cexRPMService.increment(.binance, api: .rpiOrderbook)
-        return try await _orderbook(symbol, path: "rpiDepth", limit: 1000)
+    func rpiOrderbook(_ symbol: String, market: Cex.Market) async throws -> Orderbook? {
+        guard market == .futures else {
+            return nil
+        }
+
+        cexRPMService.increment(.binance, market: market, api: .rpiOrderbook)
+        return try await _orderbook(symbol, market: market, path: "rpiDepth", limit: 1000)
     }
 
-    private func _orderbook(_ symbol: String, path: String, limit: Int) async throws -> Orderbook {
-        var components = URLComponents(string: host.rawValue + "/fapi/v1/\(path)")
+    private func _orderbook(_ symbol: String, market: Cex.Market, path: String, limit: Int) async throws -> Orderbook {
+        var components = URLComponents(string: endpoint(path, market: market))
         components?.queryItems = [
             URLQueryItem(name: "symbol", value: symbol),
             URLQueryItem(name: "limit", value: "\(limit)")
@@ -124,7 +147,7 @@ extension BinanceAPI {
         let data = try await self.data(url!, session: session)
 
         struct Holder: Decodable {
-            let T: Int64  // Transaction time
+            let T: Int64?  // Transaction time. Spot depth responses do not include it.
             let bids: [[String]]
             let asks: [[String]]
         }
@@ -138,7 +161,7 @@ extension BinanceAPI {
             asks: holder.asks.map {
                 Orderbook.Level(price: Double($0[0])!, size: Double($0[1])!)
             },
-            timestamp: TimeInterval(holder.T) / 1000.0
+            timestamp: holder.T.map { TimeInterval($0) / 1000.0 } ?? Date().timeIntervalSince1970
         )
     }
 }
@@ -147,11 +170,11 @@ extension BinanceAPI {
 
     typealias Ticker = Cex.Ticker
 
-    func tickers(_ cache: Bool = false) async throws -> [Ticker] {
+    func tickers(_ market: Cex.Market, cache: Bool = false) async throws -> [Ticker] {
         var tickers: [Ticker] = []
         if cache {
             do {
-                tickers = try await tickersCache()
+                tickers = try await tickersCache(market)
             } catch {
                 print("Cache is broken, fetching from API. \(error)")
             }
@@ -159,48 +182,49 @@ extension BinanceAPI {
         if !tickers.isEmpty {
             return tickers
         }
-        print("Fetching tickers from Binance API.")
-        let components = URLComponents(string: host.rawValue + "/fapi/v1/ticker/24hr")
+        print("Fetching \(market.title) tickers from Binance API.")
+        let components = URLComponents(string: endpoint("ticker/24hr", market: market))
         let url = components?.url!
-        cexRPMService.increment(.binance, api: .tickers)
+        cexRPMService.increment(.binance, market: market, api: .tickers)
         let data = try await self.data(url!, session: session)
-        try await FileService.shared.write(data, name: "tickers_Binance.json")
-        return try fetch24hrTickers(data: data)
+        try await FileService.shared.write(data, name: tickersCacheFileName(for: market))
+        return try fetch24hrTickers(data: data, market: market)
     }
 
-    func ticker(_ symbol: String) async throws -> Ticker {
-        var components = URLComponents(string: host.rawValue + "/fapi/v1/ticker/24hr")
+    func ticker(_ symbol: String, market: Cex.Market) async throws -> Ticker {
+        var components = URLComponents(string: endpoint("ticker/24hr", market: market))
         components?.queryItems = [
             URLQueryItem(name: "symbol", value: symbol)
         ]
         let url = components?.url!
-        cexRPMService.increment(.binance, api: .ticker)
+        cexRPMService.increment(.binance, market: market, api: .ticker)
         let data = try await self.data(url!, session: session)
-        return try fetch24hrTicker(data: data)
+        return try fetch24hrTicker(data: data, market: market)
     }
 
-    private func tickersCache() async throws -> [Ticker] {
-        if let data = try await FileService.shared.read("tickers_Binance.json") {
-            return try fetch24hrTickers(data: data)
+    private func tickersCache(_ market: Cex.Market) async throws -> [Ticker] {
+        if let data = try await FileService.shared.read(tickersCacheFileName(for: market)) {
+            return try fetch24hrTickers(data: data, market: market)
         }
         return []
     }
 
-    private func fetch24hrTickers(data: Data) throws -> [Ticker] {
+    private func fetch24hrTickers(data: Data, market: Cex.Market) throws -> [Ticker] {
         return try JSONDecoder().decode([TickerData].self, from: data).map { ticker in
-            self.ticker(from: ticker)
+            self.ticker(from: ticker, market: market)
         }
     }
 
-    private func fetch24hrTicker(data: Data) throws -> Ticker {
-        return ticker(from: try JSONDecoder().decode(TickerData.self, from: data))
+    private func fetch24hrTicker(data: Data, market: Cex.Market) throws -> Ticker {
+        return ticker(from: try JSONDecoder().decode(TickerData.self, from: data), market: market)
     }
 
-    private func ticker(from ticker: TickerData) -> Ticker {
+    private func ticker(from ticker: TickerData, market: Cex.Market) -> Ticker {
         Ticker(
             symbol: ticker.symbol,
             turnover24h: ticker.quoteVolumeDouble,
-            priceChangePercent: ticker.priceChangePercentDouble
+            priceChangePercent: ticker.priceChangePercentDouble,
+            market: market
         )
     }
 

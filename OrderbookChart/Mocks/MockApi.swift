@@ -21,7 +21,7 @@ struct MockApi: ApiInterface, Sendable {
     let orderbookMockFileName: String
     let rpiOrderbookMockFileName: String
 
-    func kLines(_ symbol: String, interval: Cex.Interval, limit: Int) async throws -> [Candle] {
+    func kLines(_ symbol: String, market: Cex.Market, interval: Cex.Interval, limit: Int) async throws -> [Candle] {
         let url = URL(fileURLWithPath: Bundle.main.resourcePath!).appendingPathComponent(kLinesMockFileName)
         let data = try Data(contentsOf: url)
 
@@ -42,11 +42,11 @@ struct MockApi: ApiInterface, Sendable {
         }.reversed()
     }
 
-    func orderbook(_ symbol: String) async throws -> Orderbook {
+    func orderbook(_ symbol: String, market: Cex.Market) async throws -> Orderbook {
         try await _orderbook(orderbookMockFileName)
     }
 
-    func rpiOrderbook(_ symbol: String) async throws -> Orderbook {
+    func rpiOrderbook(_ symbol: String, market: Cex.Market) async throws -> Orderbook? {
         try await _orderbook(rpiOrderbookMockFileName)
     }
 
@@ -74,12 +74,12 @@ struct MockApi: ApiInterface, Sendable {
         )
     }
 
-    func tickers(_ cache: Bool = false) async throws -> [Ticker] {
+    func tickers(_ market: Cex.Market, cache: Bool = false) async throws -> [Ticker] {
         return []
     }
 
-    func ticker(_ symbol: String) async throws -> Ticker {
-        Ticker(symbol: symbol, turnover24h: 10000, priceChangePercent: 0)
+    func ticker(_ symbol: String, market: Cex.Market) async throws -> Ticker {
+        Ticker(symbol: symbol, turnover24h: 10000, priceChangePercent: 0, market: market)
     }
 
     private struct ApiResult<Result: Decodable>: Decodable {
