@@ -471,7 +471,11 @@ struct SidebarContentView: View {
     }
 
     private func applyTickerCategoryFilters() {
-        tickers = sortedTickers(allTickers.filter(shouldShowTicker))
+        tickers = sortedTickers(
+            allTickers
+                .filter(shouldShowTicker)
+                .filter(shouldShowTickerForCurrentSortRule)
+        )
     }
 
     private func shouldShowTicker(_ ticker: Ticker) -> Bool {
@@ -487,6 +491,22 @@ struct SidebarContentView: View {
         case .energy:
             return showsEnergyTickers
         }
+    }
+
+    private func shouldShowTickerForCurrentSortRule(_ ticker: Ticker) -> Bool {
+        guard let turnoverRange24h = tickerSortRule.turnoverRange24h else {
+            return true
+        }
+
+        if let minimum = turnoverRange24h.minimum, ticker.turnover24h <= minimum {
+            return false
+        }
+
+        if let maximum = turnoverRange24h.maximum, ticker.turnover24h >= maximum {
+            return false
+        }
+
+        return true
     }
 
     private func tickerCategory(for symbol: String) -> TickerCategory {
@@ -697,7 +717,14 @@ struct SidebarContentView: View {
         }
 
         switch tickerSortRule {
-        case .turnover:
+        case .turnover,
+             .turnoverUnder1M,
+             .turnoverOver1M,
+             .turnoverOver5M,
+             .turnoverOver10M,
+             .turnover1MTo5M,
+             .turnover1MTo10M,
+             .turnover5MTo10M:
             return sort { $0.turnover24h }
         case .priceChange:
             return sort { $0.priceChangePercent }
@@ -813,6 +840,13 @@ struct SidebarContentView: View {
 
     private enum TickerSortRule: CaseIterable {
         case turnover
+        case turnoverUnder1M
+        case turnoverOver1M
+        case turnoverOver5M
+        case turnoverOver10M
+        case turnover1MTo5M
+        case turnover1MTo10M
+        case turnover5MTo10M
         case priceChange
         case priceChangeM
 
@@ -820,10 +854,45 @@ struct SidebarContentView: View {
             switch self {
             case .turnover:
                 return "Turnover 24H"
+            case .turnoverUnder1M:
+                return "Turnover < 1 M $"
+            case .turnoverOver1M:
+                return "Turnover > 1 M $"
+            case .turnoverOver5M:
+                return "Turnover > 5 M $"
+            case .turnoverOver10M:
+                return "Turnover > 10 M $"
+            case .turnover1MTo5M:
+                return "Turnover 1 M $ - 5 M $"
+            case .turnover1MTo10M:
+                return "Turnover 1 M $ - 10 M $"
+            case .turnover5MTo10M:
+                return "Turnover 5 M $ - 10 M $"
             case .priceChange:
                 return "Price Change 24H"
             case .priceChangeM:
                 return "Price Change 24H (Abs)"
+            }
+        }
+
+        var turnoverRange24h: (minimum: Double?, maximum: Double?)? {
+            switch self {
+            case .turnoverUnder1M:
+                return (nil, 1_000_000)
+            case .turnoverOver1M:
+                return (1_000_000, nil)
+            case .turnoverOver5M:
+                return (5_000_000, nil)
+            case .turnoverOver10M:
+                return (10_000_000, nil)
+            case .turnover1MTo5M:
+                return (1_000_000, 5_000_000)
+            case .turnover1MTo10M:
+                return (1_000_000, 10_000_000)
+            case .turnover5MTo10M:
+                return (5_000_000, 10_000_000)
+            case .turnover, .priceChange, .priceChangeM:
+                return nil
             }
         }
     }
