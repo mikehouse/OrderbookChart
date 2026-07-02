@@ -370,7 +370,7 @@ struct SidebarContentView: View {
                     fileNamePrefix: exportingSection.name
                 )
             } else {
-                exportTickers(tickers, to: directoryURL)
+                exportTickers(tickersForMainExport(), to: directoryURL)
             }
         case .failure(let error):
             exportMessage = "Export failed: \(error.localizedDescription)"
@@ -526,6 +526,18 @@ struct SidebarContentView: View {
         }
     }
 
+    private func includesInMainExportBinding(for section: TickerSection) -> Binding<Bool> {
+        Binding {
+            customTickerSections.first(where: { $0.id == section.id })?.includesInMainExport ?? false
+        } set: { includesInMainExport in
+            guard let index = customTickerSections.firstIndex(where: { $0.id == section.id }) else {
+                return
+            }
+
+            customTickerSections[index].includesInMainExport = includesInMainExport
+        }
+    }
+
     @ViewBuilder
     private func mainTickerRow(_ ticker: Ticker) -> some View {
         if customTickerSections.isEmpty {
@@ -566,6 +578,18 @@ struct SidebarContentView: View {
         return section.symbols.compactMap { tickerBySymbol[$0] }
     }
 
+    private func tickersForMainExport() -> [Ticker] {
+        let excludedSymbols = Set(customTickerSections
+            .filter { !$0.includesInMainExport }
+            .flatMap(\.symbols))
+
+        guard !excludedSymbols.isEmpty else {
+            return tickers
+        }
+
+        return tickers.filter { !excludedSymbols.contains($0.symbol) }
+    }
+
     private func tickerRow(_ ticker: Ticker) -> some View {
         HStack {
             Text(ticker.symbol)
@@ -595,6 +619,8 @@ struct SidebarContentView: View {
         HStack {
             Text(section.name)
             Spacer()
+            Toggle("export", isOn: includesInMainExportBinding(for: section))
+                .toggleStyle(.checkbox)
             Button {
                 exportingSection = section
                 isSelectingExportDirectory = true
@@ -741,11 +767,18 @@ struct SidebarContentView: View {
         let id: UUID
         let name: String
         var symbols: [String] = []
+        var includesInMainExport = false
 
-        init(id: UUID = UUID(), name: String, symbols: [String] = []) {
+        init(
+            id: UUID = UUID(),
+            name: String,
+            symbols: [String] = [],
+            includesInMainExport: Bool = false
+        ) {
             self.id = id
             self.name = name
             self.symbols = symbols
+            self.includesInMainExport = includesInMainExport
         }
     }
 
