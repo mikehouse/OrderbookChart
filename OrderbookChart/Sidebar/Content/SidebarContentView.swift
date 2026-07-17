@@ -113,7 +113,9 @@ private struct NotCryptoSimbols {
         "RIVN", // Rivian Automotive
         "GME", // GameStop
         "DRAM", // Roundhill Memory ETF
-        "SQQQ", // ProShares UltraPro
+        "SQQQ", // ProShares UltraPro Short
+        "TQQQ", // ProShares UltraPro
+        "QNTX", // Quantinuum
     ]
 }
 
