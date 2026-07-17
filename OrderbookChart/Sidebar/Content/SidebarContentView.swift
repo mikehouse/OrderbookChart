@@ -112,7 +112,8 @@ private struct NotCryptoSimbols {
         "EWZ", // iShares MSCI Brazil ETF
         "RIVN", // Rivian Automotive
         "GME", // GameStop
-        "DRAM" // Roundhill Memory ETF
+        "DRAM", // Roundhill Memory ETF
+        "SQQQ", // ProShares UltraPro
     ]
 }
 
