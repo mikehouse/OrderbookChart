@@ -14,6 +14,8 @@ struct ChartView: View {
     private let isSnapshot: Bool
     
     private let turnoverChartHeight: Double = 60
+    private static let atrPeriod = 14
+    private static let atrCandleCount = 100
 
     init(
         candleSize: Binding<Int>,
@@ -43,7 +45,7 @@ struct ChartView: View {
             ?? candles.map(\.high).max() ?? 0
         let maxYAxisLabelWidth = calculateMaxYAxisLabelWidth(for: high)
         let turnover = turnoverValues()
-        let avgMovePercent = averageMovePercent()
+        let atrPercent = averageTrueRangePercent()
 
         container {
             VStack(spacing: 8) {
@@ -56,11 +58,11 @@ struct ChartView: View {
                         Spacer()
                     }
                 }
-                if let avgMovePercent {
+                if let atrPercent {
                     HStack(spacing: 4) {
-                        Text("Avg Move:")
+                        Text("ATR:")
                             .foregroundStyle(Color.gray)
-                        Text(avgMovePercent, format: .number.precision(.fractionLength(0...4)).grouping(.automatic))
+                        Text(atrPercent, format: .number.precision(.fractionLength(0...4)).grouping(.automatic))
                         Text("%")
                         Spacer()
                     }
@@ -202,16 +204,39 @@ struct ChartView: View {
         return size.width + 10
     }
 
-    private func averageMovePercent() -> Double? {
-        guard candles.count > 1 else { return nil }
+    private func averageTrueRangePercent() -> Double? {
+        guard candles.count >= Self.atrCandleCount else { return nil }
 
-        let moves = zip(candles, candles.dropFirst()).compactMap { previous, current -> Double? in
-            guard previous.close != 0 else { return nil }
-            return abs(current.close / previous.close - 1) * 100
+        let sourceCandles: [Candle]
+        // With no spare candle, include the current one. Otherwise use the latest 100 closed candles.
+        if candles.count == Self.atrCandleCount {
+            sourceCandles = candles
+        } else {
+            sourceCandles = Array(candles.dropLast().suffix(Self.atrCandleCount))
         }
 
-        guard !moves.isEmpty else { return nil }
-        return moves.reduce(0, +) / Double(moves.count)
+        guard let firstCandle = sourceCandles.first else { return nil }
+        guard let latestClose = sourceCandles.last?.close, latestClose != 0 else { return nil }
+
+        let remainingTrueRanges = zip(sourceCandles, sourceCandles.dropFirst()).map { previous, current in
+            let highLowRange = current.high - current.low
+            let highPreviousCloseRange = abs(current.high - previous.close)
+            let lowPreviousCloseRange = abs(current.low - previous.close)
+            return max(highLowRange, max(highPreviousCloseRange, lowPreviousCloseRange))
+        }
+        let trueRanges = [firstCandle.high - firstCandle.low] + remainingTrueRanges
+
+        guard trueRanges.count >= Self.atrPeriod else { return nil }
+
+        var atr = trueRanges
+            .prefix(Self.atrPeriod)
+            .reduce(0, +) / Double(Self.atrPeriod)
+
+        for trueRange in trueRanges.dropFirst(Self.atrPeriod) {
+            atr = (atr * Double(Self.atrPeriod - 1) + trueRange) / Double(Self.atrPeriod)
+        }
+
+        return atr / latestClose * 100
     }
 
     private func turnoverValues() -> [Double] {
