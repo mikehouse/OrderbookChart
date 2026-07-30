@@ -20,6 +20,7 @@ final class BybitAPI: ApiInterface {
 
     var host: Host = .main
     var session: URLSession = .shared
+    private static let tickersCacheMaxAge: TimeInterval = 60 * 60
 
     private struct ApiResult<Result: Decodable>: Decodable {
         let result: Result
@@ -168,7 +169,10 @@ extension BybitAPI {
     }
 
     private func tickersCache(_ market: Cex.Market) async throws -> [Ticker] {
-        if let data = try await FileService.shared.read(tickersCacheFileName(for: market)) {
+        if let data = try await FileService.shared.read(
+            tickersCacheFileName(for: market),
+            maxAge: Self.tickersCacheMaxAge
+        ) {
             return try self.tickers(data: data, market: market)
         }
         return []

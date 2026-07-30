@@ -23,6 +23,7 @@ final class BinanceAPI: ApiInterface {
     var session: URLSession = .shared
 
     fileprivate let cexRPMService: CexRPMService
+    private static let tickersCacheMaxAge: TimeInterval = 60 * 60
 
     init(cexRPMService: CexRPMService) {
         self.cexRPMService = cexRPMService
@@ -203,7 +204,10 @@ extension BinanceAPI {
     }
 
     private func tickersCache(_ market: Cex.Market) async throws -> [Ticker] {
-        if let data = try await FileService.shared.read(tickersCacheFileName(for: market)) {
+        if let data = try await FileService.shared.read(
+            tickersCacheFileName(for: market),
+            maxAge: Self.tickersCacheMaxAge
+        ) {
             return try fetch24hrTickers(data: data, market: market)
         }
         return []
