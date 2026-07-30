@@ -123,15 +123,18 @@ struct SidebarContentView: View {
 
     @Binding private var selectedCex: Cex?
     @Binding private var selectedTicker: Ticker?
+    @Binding private var timeframe: Cex.Interval
 
     @Environment(AppContext.self) private var appContext
 
     init(
         selectedCex: Binding<Cex?>,
-        selectedTicker: Binding<Ticker?>
+        selectedTicker: Binding<Ticker?>,
+        timeframe: Binding<Cex.Interval>
     ) {
         _selectedCex = selectedCex
         _selectedTicker = selectedTicker
+        _timeframe = timeframe
     }
 
     @State private var isLoading = false
@@ -154,6 +157,11 @@ struct SidebarContentView: View {
     @State private var exportingSection: TickerSection?
     @State private var rateLimitPercent: Int = 0
     @State private var hasLoadedInitialState = false
+    @State private var atrPercentByTickerID: [Ticker.ID: Double] = [:]
+    @State private var atrProgress: ATRProgress?
+    @State private var atrRequestID: UUID?
+    @State private var atrLoadingTask: Task<Void, Never>?
+    @State private var tickerLoadRequestID: UUID?
 
     var body: some View {
         Group {
@@ -169,7 +177,18 @@ struct SidebarContentView: View {
                     .buttonStyle(.borderedProminent)
                 }
             } else if isLoading {
-                ProgressView("Loading tickers…")
+                if let atrProgress {
+                    ProgressView(
+                        value: Double(atrProgress.completed),
+                        total: Double(atrProgress.total)
+                    ) {
+                        Text("\(atrProgress.completed)/\(atrProgress.total)")
+                    }
+                    .progressViewStyle(.linear)
+                    .padding()
+                } else {
+                    ProgressView("Loading tickers…")
+                }
             } else if allTickers.isEmpty {
                 Text("No tickers available")
                     .foregroundStyle(.secondary)
@@ -295,6 +314,7 @@ struct SidebarContentView: View {
             hasLoadedInitialState = true
         }
         .onChange(of: selectedCex) {
+            cancelATRLoading()
             Task {
                 await loadForCurrentCex(cache: true)
             }
@@ -306,6 +326,7 @@ struct SidebarContentView: View {
                 return
             }
 
+            cancelATRLoading()
             Task {
                 await loadForCurrentCex(cache: true)
             }
@@ -319,7 +340,12 @@ struct SidebarContentView: View {
             storeCustomTickerSections()
         }
         .onChange(of: tickerSortRule) {
-            applyTickerCategoryFilters()
+            tickerSortRuleDidChange()
+        }
+        .onChange(of: timeframe) {
+            if tickerSortRule.sortsByATR, tickerLoadRequestID == nil {
+                startATRSorting()
+            }
         }
         .onChange(of: showsCryptoTickers) {
             tickerCategoryFilterDidChange()
@@ -348,6 +374,9 @@ struct SidebarContentView: View {
             allowsMultipleSelection: false
         ) { result in
             handleExportDirectorySelection(result)
+        }
+        .onDisappear {
+            cancelATRLoading()
         }
     }
 
@@ -471,6 +500,112 @@ struct SidebarContentView: View {
     private func tickerCategoryFilterDidChange() {
         storeTickerCategoryFilters()
         applyTickerCategoryFilters()
+    }
+
+    private func tickerSortRuleDidChange() {
+        if tickerSortRule.sortsByATR {
+            startATRSorting()
+        } else {
+            cancelATRLoading()
+            atrPercentByTickerID = [:]
+            isLoading = false
+            applyTickerCategoryFilters()
+        }
+    }
+
+    private func startATRSorting() {
+        cancelATRLoading()
+        atrPercentByTickerID = [:]
+
+        guard let selectedCex,
+              let minimumTurnover24h = tickerSortRule.atrMinimumTurnover24h
+        else {
+            isLoading = false
+            applyTickerCategoryFilters()
+            return
+        }
+
+        let candidateTickers = allTickers.filter { $0.turnover24h > minimumTurnover24h }
+        guard !candidateTickers.isEmpty else {
+            tickers = []
+            isLoading = false
+            return
+        }
+
+        let api: ApiInterface
+        switch selectedCex {
+        case .bybit:
+            api = appContext.bybit
+        case .binance:
+            api = appContext.binance
+        }
+
+        let requestID = UUID()
+        atrRequestID = requestID
+        atrProgress = ATRProgress(completed: 0, total: candidateTickers.count)
+        isLoading = true
+
+        let interval = timeframe
+        atrLoadingTask = Task {
+            await loadATRValues(
+                for: candidateTickers,
+                api: api,
+                interval: interval,
+                requestID: requestID
+            )
+        }
+    }
+
+    private func loadATRValues(
+        for candidateTickers: [Ticker],
+        api: ApiInterface,
+        interval: Cex.Interval,
+        requestID: UUID
+    ) async {
+        defer {
+            if atrRequestID == requestID {
+                atrProgress = nil
+                atrRequestID = nil
+                atrLoadingTask = nil
+                isLoading = false
+            }
+        }
+
+        var atrValues: [Ticker.ID: Double] = [:]
+
+        for (index, ticker) in candidateTickers.enumerated() {
+            guard atrRequestID == requestID, !Task.isCancelled else { return }
+
+            do {
+                let candles = try await api.kLines(
+                    ticker.symbol,
+                    market: ticker.market,
+                    interval: interval,
+                    limit: ATRCalculator.requestedCandleCount
+                )
+                guard atrRequestID == requestID, !Task.isCancelled else { return }
+
+                if let atrPercent = ATRCalculator.normalizedPercent(for: candles) {
+                    atrValues[ticker.id] = atrPercent
+                }
+            } catch {
+                guard atrRequestID == requestID, !Task.isCancelled else { return }
+                print("Failed to calculate ATR for \(ticker.symbol): \(error)")
+            }
+
+            atrProgress = ATRProgress(completed: index + 1, total: candidateTickers.count)
+        }
+
+        guard atrRequestID == requestID, !Task.isCancelled else { return }
+        atrPercentByTickerID = atrValues
+        applyTickerCategoryFilters()
+    }
+
+    private func cancelATRLoading() {
+        atrLoadingTask?.cancel()
+        atrLoadingTask = nil
+        atrRequestID = nil
+        atrProgress = nil
     }
 
     private func applyTickerCategoryFilters() {
@@ -664,34 +799,41 @@ struct SidebarContentView: View {
     }
 
     private func loadForCurrentCex(cache: Bool) async {
+        cancelATRLoading()
+        atrPercentByTickerID = [:]
+
+        let requestID = UUID()
+        tickerLoadRequestID = requestID
+
         guard let cex = selectedCex else {
             allTickers = []
             tickers = []
             selectedTicker = nil
             errorMessage = nil
+            tickerLoadRequestID = nil
+            isLoading = false
             return
         }
 
         isLoading = true
-        defer { isLoading = false }
         errorMessage = nil
         let market = selectedMarket
 
         do {
+            let fetchedTickers: [Ticker]
             switch cex {
             case .bybit:
                 let ticker = try await appContext.bybit.tickers(market, cache: cache)
-                allTickers = ticker
+                fetchedTickers = ticker
                     .filter({ !$0.symbol.contains("-") })
                     .filter({ !$0.symbol.hasSuffix("PERP") })
                     .filter({ !$0.symbol.hasSuffix("USDC") })
                     .filter({ !$0.symbol.hasPrefix("USDC") })
                     .filter({ !$0.symbol.hasPrefix("USD") })
                     .filter({ $0.symbol.hasSuffix("USDT") })
-                applyTickerCategoryFilters()
             case .binance:
                 let ticker = try await appContext.binance.tickers(market, cache: cache)
-                allTickers = ticker
+                fetchedTickers = ticker
                     .filter({ !$0.symbol.contains("-") })
                     .filter({ !$0.symbol.contains("_") })
                     .filter({ !$0.symbol.hasSuffix("USDC") })
@@ -700,10 +842,29 @@ struct SidebarContentView: View {
                     .filter({ !$0.symbol.hasPrefix("USD1") })
                     .filter({ !$0.symbol.hasPrefix("BTCUSD1") })
                     .filter({ !$0.symbol.hasPrefix("ETHBTC") })
+            }
+
+            guard tickerLoadRequestID == requestID,
+                  selectedCex == cex,
+                  selectedMarket == market
+            else {
+                return
+            }
+
+            allTickers = fetchedTickers
+            tickerLoadRequestID = nil
+
+            if tickerSortRule.sortsByATR {
+                startATRSorting()
+            } else {
                 applyTickerCategoryFilters()
+                isLoading = false
             }
         } catch {
+            guard tickerLoadRequestID == requestID else { return }
+            tickerLoadRequestID = nil
             errorMessage = "\(error)"
+            isLoading = false
         }
     }
 
@@ -733,6 +894,23 @@ struct SidebarContentView: View {
             return sort { $0.priceChangePercent }
         case .priceChangeM:
             return sort { abs($0.priceChangePercent) }
+        case .atrOver1MTurnover,
+             .atrOver5MTurnover,
+             .atrOver10MTurnover:
+            return tickers
+                .compactMap { ticker -> (ticker: Ticker, atrPercent: Double)? in
+                    guard let atrPercent = atrPercentByTickerID[ticker.id] else {
+                        return nil
+                    }
+                    return (ticker, atrPercent)
+                }
+                .sorted { lhs, rhs in
+                    if lhs.atrPercent == rhs.atrPercent {
+                        return lhs.ticker.symbol < rhs.ticker.symbol
+                    }
+                    return lhs.atrPercent > rhs.atrPercent
+                }
+                .map(\.ticker)
         }
     }
 
@@ -812,6 +990,11 @@ struct SidebarContentView: View {
         }
     }
 
+    private struct ATRProgress {
+        let completed: Int
+        let total: Int
+    }
+
     private enum StorageKeys: String {
         case customTickerSections
         case showsCryptoTickers
@@ -850,6 +1033,9 @@ struct SidebarContentView: View {
         case turnover1MTo5M
         case turnover1MTo10M
         case turnover5MTo10M
+        case atrOver1MTurnover
+        case atrOver5MTurnover
+        case atrOver10MTurnover
         case priceChange
         case priceChangeM
 
@@ -871,6 +1057,12 @@ struct SidebarContentView: View {
                 return "Turnover 1 M $ - 10 M $"
             case .turnover5MTo10M:
                 return "Turnover 5 M $ - 10 M $"
+            case .atrOver1MTurnover:
+                return "ATR (%) > 1 M $ Turnover"
+            case .atrOver5MTurnover:
+                return "ATR (%) > 5 M $ Turnover"
+            case .atrOver10MTurnover:
+                return "ATR (%) > 10 M $ Turnover"
             case .priceChange:
                 return "Price Change 24H"
             case .priceChangeM:
@@ -888,6 +1080,12 @@ struct SidebarContentView: View {
                 return (5_000_000, nil)
             case .turnoverOver10M:
                 return (10_000_000, nil)
+            case .atrOver1MTurnover:
+                return (1_000_000, nil)
+            case .atrOver5MTurnover:
+                return (5_000_000, nil)
+            case .atrOver10MTurnover:
+                return (10_000_000, nil)
             case .turnover1MTo5M:
                 return (1_000_000, 5_000_000)
             case .turnover1MTo10M:
@@ -897,6 +1095,23 @@ struct SidebarContentView: View {
             case .turnover, .priceChange, .priceChangeM:
                 return nil
             }
+        }
+
+        var atrMinimumTurnover24h: Double? {
+            switch self {
+            case .atrOver1MTurnover:
+                return 1_000_000
+            case .atrOver5MTurnover:
+                return 5_000_000
+            case .atrOver10MTurnover:
+                return 10_000_000
+            default:
+                return nil
+            }
+        }
+
+        var sortsByATR: Bool {
+            atrMinimumTurnover24h != nil
         }
     }
 

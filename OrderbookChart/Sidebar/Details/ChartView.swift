@@ -14,8 +14,6 @@ struct ChartView: View {
     private let isSnapshot: Bool
     
     private let turnoverChartHeight: Double = 60
-    private static let atrPeriod = 14
-    private static let atrCandleCount = 100
 
     init(
         candleSize: Binding<Int>,
@@ -45,7 +43,7 @@ struct ChartView: View {
             ?? candles.map(\.high).max() ?? 0
         let maxYAxisLabelWidth = calculateMaxYAxisLabelWidth(for: high)
         let turnover = turnoverValues()
-        let atrPercent = averageTrueRangePercent()
+        let atrPercent = ATRCalculator.normalizedPercent(for: candles)
 
         container {
             VStack(spacing: 8) {
@@ -202,41 +200,6 @@ struct ChartView: View {
         let attributes: [NSAttributedString.Key: Any] = [.font: font]
         let size = (maxString as NSString).size(withAttributes: attributes)
         return size.width + 10
-    }
-
-    private func averageTrueRangePercent() -> Double? {
-        guard candles.count >= Self.atrCandleCount else { return nil }
-
-        let sourceCandles: [Candle]
-        // With no spare candle, include the current one. Otherwise use the latest 100 closed candles.
-        if candles.count == Self.atrCandleCount {
-            sourceCandles = candles
-        } else {
-            sourceCandles = Array(candles.dropLast().suffix(Self.atrCandleCount))
-        }
-
-        guard let firstCandle = sourceCandles.first else { return nil }
-        guard let latestClose = sourceCandles.last?.close, latestClose != 0 else { return nil }
-
-        let remainingTrueRanges = zip(sourceCandles, sourceCandles.dropFirst()).map { previous, current in
-            let highLowRange = current.high - current.low
-            let highPreviousCloseRange = abs(current.high - previous.close)
-            let lowPreviousCloseRange = abs(current.low - previous.close)
-            return max(highLowRange, max(highPreviousCloseRange, lowPreviousCloseRange))
-        }
-        let trueRanges = [firstCandle.high - firstCandle.low] + remainingTrueRanges
-
-        guard trueRanges.count >= Self.atrPeriod else { return nil }
-
-        var atr = trueRanges
-            .prefix(Self.atrPeriod)
-            .reduce(0, +) / Double(Self.atrPeriod)
-
-        for trueRange in trueRanges.dropFirst(Self.atrPeriod) {
-            atr = (atr * Double(Self.atrPeriod - 1) + trueRange) / Double(Self.atrPeriod)
-        }
-
-        return atr / latestClose * 100
     }
 
     private func turnoverValues() -> [Double] {

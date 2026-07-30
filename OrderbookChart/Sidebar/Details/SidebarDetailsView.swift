@@ -5,15 +5,18 @@ struct SidebarDetailsView: View {
 
     @Binding private var selectedCex: Cex?
     @Binding private var selectedTicker: Ticker?
+    @Binding private var timeframe: Cex.Interval
 
     @Environment(AppContext.self) private var appContext
 
     init(
         selectedCex: Binding<Cex?>,
-        selectedTicker: Binding<Ticker?>
+        selectedTicker: Binding<Ticker?>,
+        timeframe: Binding<Cex.Interval>
     ) {
         _selectedCex = selectedCex
         _selectedTicker = selectedTicker
+        _timeframe = timeframe
     }
 
     @State private var candles: [Candle] = []
@@ -37,7 +40,6 @@ struct SidebarDetailsView: View {
     @State private var orderbookUnion = 10
     @State private var orderbookUnions = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
 
-    @State private var timeframe = Cex.Interval.min1
     @State private var timeframes = Cex.Interval.allCases
 
     var body: some View {
@@ -412,7 +414,8 @@ private enum StorageKeys: String {
     } detail: {
         SidebarDetailsView(
             selectedCex: .constant(.bybit),
-            selectedTicker: .constant(.init(symbol: "BTCUSDT", turnover24h: 5473206785.5191, priceChangePercent: 2.31))
+            selectedTicker: .constant(.init(symbol: "BTCUSDT", turnover24h: 5473206785.5191, priceChangePercent: 2.31)),
+            timeframe: .constant(.min1)
         )
         .navigationSplitViewColumnWidth(460)
         .environment(
