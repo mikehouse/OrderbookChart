@@ -4,10 +4,15 @@ import UniformTypeIdentifiers
 
 private struct NotCryptoSimbols {
 
-    static let currencies = [
+    static let currencies = _currencies.map({ "\($0)USDT" })
+    static let minerals = _minerals.map({ "\($0)USDT" })
+    static let energy = _energy.map({ "\($0)USDT" })
+    static let stocks = _stocks.map({ "\($0)USDT" })
+
+    static let _currencies = [
         "NOK", // Norwegian Krone
     ]
-    static let minerals = [
+    static let _minerals = [
         "XAU", // Gold
         "PAXG", // 1 fine troy ounce of a physical London Good Delivery gold bar
         "XAUT", // Tether Gold
@@ -16,14 +21,15 @@ private struct NotCryptoSimbols {
         "XPD", // Palladium
         "URNM", // Uranium
         "COPPER", // Copper
+        "GDX", // Gold Miners ETF
     ]
-    static let energy = [
+    static let _energy = [
         "XLE", // Energy Select Sector SPDR Fund
         "NATGAS", // US Natural Gas
         "CL", // West Texas Intermediate (WTI) Crude Oil
         "BZ", // Brent Crude Oil
     ]
-    static let stocks = [
+    static let _stocks = [
         "MU", // Micron Technology Inc
         "SNDK", // SanDisk Corporation
         "SPCX", // SpaceX
@@ -116,6 +122,71 @@ private struct NotCryptoSimbols {
         "SQQQ", // ProShares UltraPro Short
         "TQQQ", // ProShares UltraPro
         "QNTX", // Quantinuum
+        "SNXX", // Tradr 2X Long SNDK Daily ETF
+        "KORU", // Direxion Daily South Korea Bull 3X ETF
+        "SKHY", // SK Hynix
+        "SOXS", // Direxion Daily Semiconductor Bear 3X Shares (SOXS) ETF
+        "RDW", // Redwire Corporation (RDW)
+        "SSPC", // Leverage Shares 2X Short SPCX Daily ETF
+        "SHOP", // Shopify Inc.
+        "VRTXSTOCK", // Vertex Pharmaceuticals
+        "BIIB", // Biogen Inc.
+        "CXMT", // ChangXin Memory Technologies (CXMT)
+        "PANW", // Palo Alto Networks, Inc.
+        "NVDL", // GraniteShares 2x Long NVDA Daily ETF
+        "MVLL", // GraniteShares 2x Long MRVL Daily ETF
+        "AEHR", // Aehr Test Systems
+        "PENGSTOCK", // Penguin Solutions (PENG)
+        "BSP", // Bending Spoons SpA
+        "GIGADEVICE", // GigaDevice Semiconductor Inc. H-shares
+        "SNOW", // Snowflake Inc.
+        "SOXX", // iShares Semiconductor ETF
+        "XLK", // Technology Select Sector SPDR Fund
+        "APPSTOCK", // AppLovin Corp
+        "MINIMAX", // MiniMax Group Inc.
+        "JNJ", // Johnson & Johnson
+        "FWDI", // Forward Industries Inc.
+        "UNITREE", // Unitree Robotics Inc.
+        "GILD", // Gilead Sciences Inc.
+        "AMGN", // Amgen Inc.
+        "BAC", // Bank of America Corp
+        "IONQ", // IonQ Inc.
+        "CRDO", // Credo Technology Group Holding Ltd
+        "INTW", // GraniteShares 2x Long INTC Daily ETF
+        "ZHIPU", // Zhipu AI.
+        "KSTR", // KraneShares SSE STAR Market 50 Index ETF
+        "RDDT", // Reddit, Inc.
+        "TSEM", // Tower Semiconductor Ltd.
+        "XOM", // Exxon Mobil Corporation
+        "REGN", // Regeneron Pharmaceuticals Inc.
+        "UNH", // UnitedHealth Group Inc.
+        "APLD", // Applied Digital Corporation
+        "MARA", // MARA Holdings Inc.
+        "SHAZ", // SharonAI Holdings Inc.
+        "TSLL", // Direxion Daily TSLA Bull 2X ETF
+        "TER", //  Teradyne, Inc.
+        "ONDS", // Ondas Inc.
+        "POPMART", // Pop Mart International Group
+        "XLF", // Financial Select Sector SPDR Fund
+        "GEV", // GE Vernova Inc.
+        "GS", // Goldman Sachs Group Inc.
+        "VRT", // Vertiv Holdings Co
+        "TXN", // Texas Instruments
+        "XBI", // SPDR S&P Biotech ETF
+        "TTWO", // Take-Two Interactive Software Inc.
+        "CATSTOCK", // Caterpillar Inc.
+        "TENCENT", // Tencent Holdings Limited
+        "WENSTOCK", // Wendy
+        "PEP", // PepsiCo Inc.
+        "ARKK", // Ark Innovation ETF
+        "AAL", // American Airlines Group Inc.
+        "TMF", // Direxion Daily 20+ Year Treasury Bull 3X ETF
+        "MA", // Mastercard Inc.
+        "TZA", // Direxion Daily Small Cap Bear 3X ETF
+        "PYPL", // PayPal Holdings Inc.
+        "V", // Visa Inc
+        "TBT", // ProShares UltraShort 20+ Year Treasury
+        "BITO", // ProShares Bitcoin ETF
     ]
 }
 
