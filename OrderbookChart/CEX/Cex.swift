@@ -14,6 +14,8 @@ protocol ApiInterface: Sendable {
     func tickers(_ market: Cex.Market, cache: Bool) async throws -> [Ticker]
     @concurrent
     func ticker(_ symbol: String, market: Cex.Market) async throws -> Ticker
+    @concurrent
+    func launchDate(_ symbol: String, market: Cex.Market) async throws -> Date?
 }
 
 extension ApiInterface {

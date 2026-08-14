@@ -21,6 +21,38 @@ final class BybitAPI: ApiInterface {
     var host: Host = .main
     var session: URLSession = .shared
     private static let tickersCacheMaxAge: TimeInterval = 60 * 60
+    private let launchDateCache = LaunchDateCache()
+
+    private actor LaunchDateCache {
+        private var datesBySymbol: [String: Date] = [:]
+        private var updateTasksBySymbol: [String: Task<Date, Error>] = [:]
+
+        func launchDate(
+            for symbol: String,
+            fetch: @escaping @Sendable () async throws -> Date
+        ) async throws -> Date {
+            if let date = datesBySymbol[symbol] {
+                return date
+            }
+
+            if let updateTask = updateTasksBySymbol[symbol] {
+                return try await updateTask.value
+            }
+
+            let task = Task { try await fetch() }
+            updateTasksBySymbol[symbol] = task
+
+            do {
+                let date = try await task.value
+                datesBySymbol[symbol] = date
+                updateTasksBySymbol[symbol] = nil
+                return date
+            } catch {
+                updateTasksBySymbol[symbol] = nil
+                throw error
+            }
+        }
+    }
 
     private struct ApiResult<Result: Decodable>: Decodable {
         let result: Result
@@ -33,6 +65,65 @@ final class BybitAPI: ApiInterface {
         case .spot:
             return "tickers_Bybit_spot.json"
         }
+    }
+}
+
+extension BybitAPI {
+
+    func launchDate(_ symbol: String, market: Cex.Market) async throws -> Date? {
+        guard market == .futures else {
+            return nil
+        }
+
+        return try await launchDateCache.launchDate(for: symbol, fetch: { [self] in
+            try await fetchLaunchDate(symbol)
+        })
+    }
+
+    private func fetchLaunchDate(_ symbol: String) async throws -> Date {
+        let cacheFileName = launchDateCacheFileName(for: symbol)
+        do {
+            if let cachedData = try await FileService.shared.read(cacheFileName) {
+                return try launchDate(symbol, data: cachedData)
+            }
+        } catch {
+            print("Bybit launch date cache for \(symbol) is broken, fetching from API. \(error)")
+        }
+
+        var components = URLComponents(string: host.rawValue + "/v5/market/instruments-info")
+        components?.queryItems = [
+            URLQueryItem(name: "category", value: Cex.Market.futures.bybitCategory),
+            URLQueryItem(name: "symbol", value: symbol)
+        ]
+        let data = try await self.data(components!.url!, session: session)
+        let launchDate = try launchDate(symbol, data: data)
+        try await FileService.shared.write(data, name: cacheFileName)
+        return launchDate
+    }
+
+    private func launchDateCacheFileName(for symbol: String) -> String {
+        "instrumentsInfo_Bybit_\(symbol).json"
+    }
+
+    private func launchDate(_ symbol: String, data: Data) throws -> Date {
+        struct Holder: Decodable {
+            let list: [Instrument]
+
+            struct Instrument: Decodable {
+                let symbol: String
+                let launchTime: String
+            }
+        }
+
+        let holder = try JSONDecoder().decode(ApiResult<Holder>.self, from: data)
+        guard
+            let instrument = holder.result.list.first(where: { $0.symbol == symbol }),
+            let launchTime = TimeInterval(instrument.launchTime),
+            launchTime > 0
+        else {
+            throw ApiInterfaceError.launchDateNotFound(symbol: symbol)
+        }
+        return Date(timeIntervalSince1970: launchTime / 1000.0)
     }
 }
 
@@ -206,11 +297,14 @@ extension BybitAPI {
 
     enum ApiInterfaceError: Error, Sendable, LocalizedError {
         case tickerNotFound(symbol: String)
+        case launchDateNotFound(symbol: String)
 
         var errorDescription: String? {
             switch self {
             case .tickerNotFound(let symbol):
                 return "Ticker not found: \(symbol)"
+            case .launchDateNotFound(let symbol):
+                return "Launch date not found: \(symbol)"
             }
         }
     }

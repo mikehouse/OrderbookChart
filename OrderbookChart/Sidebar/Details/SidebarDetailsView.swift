@@ -23,6 +23,7 @@ struct SidebarDetailsView: View {
     @State private var orderbook: Orderbook?
     @State private var rpiOrderbook: Orderbook?
     @State private var ticker: Ticker?
+    @State private var launchDate: Date?
 
     @State private var error: String?
 
@@ -57,6 +58,7 @@ struct SidebarDetailsView: View {
                         orderbook: $orderbook,
                         rpiOrderbook: $rpiOrderbook,
                         ticker: ticker ?? selectedTicker,
+                        launchDate: launchDate,
                         isSnapshot: false
                     )
                     .toolbar {
@@ -229,6 +231,7 @@ struct SidebarDetailsView: View {
                     orderbook: orderbook,
                     rpiOrderbook: rpiOrderbook,
                     ticker: ticker ?? selectedTicker!,
+                    launchDate: launchDate,
                     height: height
                 )
             }) {
@@ -264,7 +267,7 @@ struct SidebarDetailsView: View {
                         let recordDate = Date()
                         let timer = Timer.scheduledTimer(withTimeInterval: TimeInterval(refreshInterval), repeats: true) { [candleSize, orderbookUnion] time in
                             Task { @MainActor in
-                                if let (candles, orderbook, rpiOrderbook, ticker) = try? await chartData(
+                                if let (candles, orderbook, rpiOrderbook, ticker, launchDate) = try? await chartData(
                                     selectedCex: selectedCex,
                                     selectedTicker: selectedTicker
                                 ) {
@@ -276,6 +279,7 @@ struct SidebarDetailsView: View {
                                         orderbook: orderbook,
                                         rpiOrderbook: rpiOrderbook,
                                         ticker: ticker ?? selectedTicker,
+                                        launchDate: launchDate,
                                         height: height
                                     )
                                 }
@@ -319,26 +323,34 @@ struct SidebarDetailsView: View {
     private func updateChart() async {
         do {
             error = nil
-            let (candles, orderbook, rpiOrderbook, ticker) = try await chartData(
+            let (candles, orderbook, rpiOrderbook, ticker, launchDate) = try await chartData(
                 selectedCex: selectedCex, selectedTicker: selectedTicker
             )
             self.candles = candles
             self.orderbook = orderbook
             self.rpiOrderbook = rpiOrderbook
             self.ticker = ticker
+            self.launchDate = launchDate
         } catch {
             self.candles = []
             self.orderbook = nil
             self.rpiOrderbook = nil
             self.ticker = nil
+            self.launchDate = nil
             self.error = "\(error)"
             print(error)
         }
     }
 
-    private func chartData(selectedCex: Cex?, selectedTicker: Ticker?) async throws -> (candles: [Candle], orderbook: Orderbook?, rpiOrderbook: Orderbook?, ticker: Ticker?) {
+    private func chartData(selectedCex: Cex?, selectedTicker: Ticker?) async throws -> (
+        candles: [Candle],
+        orderbook: Orderbook?,
+        rpiOrderbook: Orderbook?,
+        ticker: Ticker?,
+        launchDate: Date?
+    ) {
         guard let selectedCex, let selectedTicker else {
-            return ([], nil, nil, nil)
+            return ([], nil, nil, nil, nil)
         }
         let api: ApiInterface
         switch selectedCex {
@@ -348,13 +360,14 @@ struct SidebarDetailsView: View {
             api = appContext.bybit
         }
         let market = selectedTicker.market
+        async let launchDate = try? api.launchDate(selectedTicker.symbol, market: market)
         let (candles, orderbook, rpiOrderbook, ticker) = try await (
             api.kLines(selectedTicker.symbol, market: market, interval: timeframe, limit: candleLimit),
             api.orderbook(selectedTicker.symbol, market: market),
             api.rpiOrderbook(selectedTicker.symbol, market: market),
             api.ticker(selectedTicker.symbol, market: market)
         )
-        return (candles, orderbook, rpiOrderbook, ticker)
+        return (candles, orderbook, rpiOrderbook, ticker, await launchDate)
     }
 
     private func makeSnapshot(
@@ -365,6 +378,7 @@ struct SidebarDetailsView: View {
         orderbook: Orderbook?,
         rpiOrderbook: Orderbook?,
         ticker: Ticker?,
+        launchDate: Date?,
         height: Double
     ) {
         let data = ImageService.shared.chartSnapshotPNG(
@@ -374,6 +388,7 @@ struct SidebarDetailsView: View {
             orderbook: orderbook,
             rpiOrderbook: rpiOrderbook,
             ticker: ticker,
+            launchDate: launchDate,
             height: height
         )
         if let data {

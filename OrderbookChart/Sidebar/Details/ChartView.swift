@@ -11,6 +11,7 @@ struct ChartView: View {
     @Binding private var orderbook: Orderbook?
     @Binding private var rpiOrderbook: Orderbook?
     private let ticker: Ticker?
+    private let launchDate: Date?
     private let isSnapshot: Bool
     
     private let turnoverChartHeight: Double = 60
@@ -22,6 +23,7 @@ struct ChartView: View {
         orderbook: Binding<Orderbook?>,
         rpiOrderbook: Binding<Orderbook?>,
         ticker: Ticker?,
+        launchDate: Date?,
         isSnapshot: Bool
     ) {
         self._candleSize = candleSize
@@ -30,6 +32,7 @@ struct ChartView: View {
         self._orderbook = orderbook
         self._rpiOrderbook = rpiOrderbook
         self.ticker = ticker
+        self.launchDate = launchDate
         self.isSnapshot = isSnapshot
     }
 
@@ -62,6 +65,14 @@ struct ChartView: View {
                             .foregroundStyle(Color.gray)
                         Text(atrPercent, format: .number.precision(.fractionLength(0...4)).grouping(.automatic))
                         Text("%")
+                        Spacer()
+                    }
+                }
+                if let launchDate {
+                    HStack(spacing: 4) {
+                        Text("Launch date:")
+                            .foregroundStyle(Color.gray)
+                        Text(launchDate, format: .dateTime.year().month(.abbreviated).day())
                         Spacer()
                     }
                 }
@@ -401,6 +412,7 @@ private struct PreviewWrapper: View {
                 orderbook: $orderbook,
                 rpiOrderbook: $rpiOrderbook,
                 ticker: ticker,
+                launchDate: Date(timeIntervalSince1970: 1_585_526_400),
                 isSnapshot: false
             )
         } else {

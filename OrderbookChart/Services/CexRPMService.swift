@@ -9,6 +9,7 @@ final class CexRPMService {
         case rpiOrderbook
         case ticker
         case tickers
+        case exchangeInfo
 
         func weight(for cex: Cex, market: Cex.Market) -> Int {
             switch cex {
@@ -62,6 +63,13 @@ final class CexRPMService {
                     return 40
                 case .spot:
                     return 80
+                }
+            case .exchangeInfo:
+                switch market {
+                case .futures:
+                    return 1
+                case .spot:
+                    return 0
                 }
             }
         }

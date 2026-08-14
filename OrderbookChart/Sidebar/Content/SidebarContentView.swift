@@ -280,6 +280,10 @@ struct SidebarContentView: View {
     @State private var atrProgress: ATRProgress?
     @State private var atrRequestID: UUID?
     @State private var atrLoadingTask: Task<Void, Never>?
+    @State private var launchDateByTickerID: [Ticker.ID: Date] = [:]
+    @State private var launchDateProgress: LaunchDateProgress?
+    @State private var launchDateRequestID: UUID?
+    @State private var launchDateLoadingTask: Task<Void, Never>?
     @State private var tickerLoadRequestID: UUID?
 
     var body: some View {
@@ -296,7 +300,16 @@ struct SidebarContentView: View {
                     .buttonStyle(.borderedProminent)
                 }
             } else if isLoading {
-                if let atrProgress {
+                if let launchDateProgress {
+                    ProgressView(
+                        value: Double(launchDateProgress.completed),
+                        total: Double(launchDateProgress.total)
+                    ) {
+                        Text("Loading launch dates: \(launchDateProgress.completed)/\(launchDateProgress.total)")
+                    }
+                    .progressViewStyle(.linear)
+                    .padding()
+                } else if let atrProgress {
                     ProgressView(
                         value: Double(atrProgress.completed),
                         total: Double(atrProgress.total)
@@ -338,7 +351,7 @@ struct SidebarContentView: View {
                         Text("Sort by")
                         Spacer()
                         Picker("", selection: $tickerSortRule) {
-                            ForEach(TickerSortRule.allCases, id: \.self) { rule in
+                            ForEach(availableTickerSortRules, id: \.self) { rule in
                                 Text(rule.title).tag(rule)
                             }
                         }
@@ -434,6 +447,7 @@ struct SidebarContentView: View {
         }
         .onChange(of: selectedCex) {
             cancelATRLoading()
+            cancelLaunchDateLoading()
             Task {
                 await loadForCurrentCex(cache: true)
             }
@@ -446,6 +460,10 @@ struct SidebarContentView: View {
             }
 
             cancelATRLoading()
+            cancelLaunchDateLoading()
+            if selectedMarket == .spot, tickerSortRule.sortsByLaunchDate {
+                tickerSortRule = .turnover
+            }
             Task {
                 await loadForCurrentCex(cache: true)
             }
@@ -496,6 +514,13 @@ struct SidebarContentView: View {
         }
         .onDisappear {
             cancelATRLoading()
+            cancelLaunchDateLoading()
+        }
+    }
+
+    private var availableTickerSortRules: [TickerSortRule] {
+        TickerSortRule.allCases.filter { rule in
+            selectedMarket == .futures || !rule.sortsByLaunchDate
         }
     }
 
@@ -618,21 +643,35 @@ struct SidebarContentView: View {
 
     private func tickerCategoryFilterDidChange() {
         storeTickerCategoryFilters()
-        applyTickerCategoryFilters()
+        if tickerSortRule.sortsByLaunchDate {
+            startLaunchDateSorting()
+        } else {
+            applyTickerCategoryFilters()
+        }
     }
 
     private func tickerSortRuleDidChange() {
+        guard tickerLoadRequestID == nil else {
+            return
+        }
+
         if tickerSortRule.sortsByATR {
             startATRSorting()
+        } else if tickerSortRule.sortsByLaunchDate {
+            startLaunchDateSorting()
         } else {
             cancelATRLoading()
+            cancelLaunchDateLoading()
             atrPercentByTickerID = [:]
+            launchDateByTickerID = [:]
             isLoading = false
             applyTickerCategoryFilters()
         }
     }
 
     private func startATRSorting() {
+        cancelLaunchDateLoading()
+        launchDateByTickerID = [:]
         cancelATRLoading()
         atrPercentByTickerID = [:]
 
@@ -725,6 +764,91 @@ struct SidebarContentView: View {
         atrLoadingTask = nil
         atrRequestID = nil
         atrProgress = nil
+    }
+
+    private func startLaunchDateSorting() {
+        cancelATRLoading()
+        atrPercentByTickerID = [:]
+        cancelLaunchDateLoading()
+        launchDateByTickerID = [:]
+
+        guard selectedMarket == .futures, let selectedCex else {
+            isLoading = false
+            applyTickerCategoryFilters()
+            return
+        }
+
+        let candidateTickers = allTickers.filter(shouldShowTicker)
+        guard !candidateTickers.isEmpty else {
+            tickers = []
+            isLoading = false
+            return
+        }
+
+        let api: ApiInterface
+        switch selectedCex {
+        case .bybit:
+            api = appContext.bybit
+        case .binance:
+            api = appContext.binance
+        }
+
+        let requestID = UUID()
+        launchDateRequestID = requestID
+        launchDateProgress = LaunchDateProgress(completed: 0, total: candidateTickers.count)
+        isLoading = true
+
+        launchDateLoadingTask = Task {
+            await loadLaunchDates(
+                for: candidateTickers,
+                api: api,
+                requestID: requestID
+            )
+        }
+    }
+
+    private func loadLaunchDates(
+        for candidateTickers: [Ticker],
+        api: ApiInterface,
+        requestID: UUID
+    ) async {
+        defer {
+            if launchDateRequestID == requestID {
+                launchDateProgress = nil
+                launchDateRequestID = nil
+                launchDateLoadingTask = nil
+                isLoading = false
+            }
+        }
+
+        var launchDates: [Ticker.ID: Date] = [:]
+
+        for (index, ticker) in candidateTickers.enumerated() {
+            guard launchDateRequestID == requestID, !Task.isCancelled else { return }
+
+            do {
+                if let launchDate = try await api.launchDate(ticker.symbol, market: ticker.market) {
+                    launchDates[ticker.id] = launchDate
+                }
+            } catch {
+                guard launchDateRequestID == requestID, !Task.isCancelled else { return }
+                print("Failed to load launch date for \(ticker.symbol): \(error)")
+            }
+
+            guard launchDateRequestID == requestID, !Task.isCancelled else { return }
+            launchDateProgress = LaunchDateProgress(completed: index + 1, total: candidateTickers.count)
+        }
+
+        guard launchDateRequestID == requestID, !Task.isCancelled else { return }
+        launchDateByTickerID = launchDates
+        applyTickerCategoryFilters()
+    }
+
+    private func cancelLaunchDateLoading() {
+        launchDateLoadingTask?.cancel()
+        launchDateLoadingTask = nil
+        launchDateRequestID = nil
+        launchDateProgress = nil
     }
 
     private func applyTickerCategoryFilters() {
@@ -920,6 +1044,8 @@ struct SidebarContentView: View {
     private func loadForCurrentCex(cache: Bool) async {
         cancelATRLoading()
         atrPercentByTickerID = [:]
+        cancelLaunchDateLoading()
+        launchDateByTickerID = [:]
 
         let requestID = UUID()
         tickerLoadRequestID = requestID
@@ -975,6 +1101,8 @@ struct SidebarContentView: View {
 
             if tickerSortRule.sortsByATR {
                 startATRSorting()
+            } else if tickerSortRule.sortsByLaunchDate {
+                startLaunchDateSorting()
             } else {
                 applyTickerCategoryFilters()
                 isLoading = false
@@ -1009,6 +1137,10 @@ struct SidebarContentView: View {
              .turnover1MTo10M,
              .turnover5MTo10M:
             return sort { $0.turnover24h }
+        case .newest:
+            return sort { ticker in
+                launchDateByTickerID[ticker.id]?.timeIntervalSince1970 ?? -Double.infinity
+            }
         case .priceChange:
             return sort { $0.priceChangePercent }
         case .priceChangeM:
@@ -1114,6 +1246,11 @@ struct SidebarContentView: View {
         let total: Int
     }
 
+    private struct LaunchDateProgress {
+        let completed: Int
+        let total: Int
+    }
+
     private enum StorageKeys: String {
         case customTickerSections
         case showsCryptoTickers
@@ -1145,6 +1282,7 @@ struct SidebarContentView: View {
 
     private enum TickerSortRule: CaseIterable {
         case turnover
+        case newest
         case turnoverUnder1M
         case turnoverOver1M
         case turnoverOver5M
@@ -1162,6 +1300,8 @@ struct SidebarContentView: View {
             switch self {
             case .turnover:
                 return "Turnover 24H"
+            case .newest:
+                return "Newest"
             case .turnoverUnder1M:
                 return "Turnover < 1 M $"
             case .turnoverOver1M:
@@ -1211,7 +1351,7 @@ struct SidebarContentView: View {
                 return (1_000_000, 10_000_000)
             case .turnover5MTo10M:
                 return (5_000_000, 10_000_000)
-            case .turnover, .priceChange, .priceChangeM:
+            case .turnover, .newest, .priceChange, .priceChangeM:
                 return nil
             }
         }
@@ -1231,6 +1371,10 @@ struct SidebarContentView: View {
 
         var sortsByATR: Bool {
             atrMinimumTurnover24h != nil
+        }
+
+        var sortsByLaunchDate: Bool {
+            self == .newest
         }
     }
 

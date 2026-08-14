@@ -14,6 +14,7 @@ final class ImageService {
         orderbook: Orderbook?,
         rpiOrderbook: Orderbook?,
         ticker: Ticker?,
+        launchDate: Date?,
         height: CGFloat
     ) -> Data? {
         let chart = ChartView(
@@ -23,6 +24,7 @@ final class ImageService {
             orderbook: .constant(orderbook),
             rpiOrderbook: .constant(rpiOrderbook),
             ticker: ticker,
+            launchDate: launchDate,
             isSnapshot: true
         )
         .frame(height: height)

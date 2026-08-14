@@ -82,6 +82,10 @@ struct MockApi: ApiInterface, Sendable {
         Ticker(symbol: symbol, turnover24h: 10000, priceChangePercent: 0, market: market)
     }
 
+    func launchDate(_ symbol: String, market: Cex.Market) async throws -> Date? {
+        nil
+    }
+
     private struct ApiResult<Result: Decodable>: Decodable {
         let result: Result
     }

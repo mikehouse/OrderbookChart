@@ -24,6 +24,39 @@ final class BinanceAPI: ApiInterface {
 
     fileprivate let cexRPMService: CexRPMService
     private static let tickersCacheMaxAge: TimeInterval = 60 * 60
+    private static let exchangeInfoCacheFileName = "exchangeInfo_Binance.json"
+    private let exchangeInfoCache = ExchangeInfoCache()
+
+    private actor ExchangeInfoCache {
+        private var launchDatesBySymbol: [String: Date]?
+        private var updateTask: Task<[String: Date], Error>?
+
+        func launchDate(
+            for symbol: String,
+            fetch: @escaping @Sendable () async throws -> [String: Date]
+        ) async throws -> Date? {
+            if let launchDate = launchDatesBySymbol?[symbol] {
+                return launchDate
+            }
+
+            if let updateTask {
+                return try await updateTask.value[symbol]
+            }
+
+            let task = Task { try await fetch() }
+            updateTask = task
+
+            do {
+                let launchDatesBySymbol = try await task.value
+                self.launchDatesBySymbol = launchDatesBySymbol
+                updateTask = nil
+                return launchDatesBySymbol[symbol]
+            } catch {
+                updateTask = nil
+                throw error
+            }
+        }
+    }
 
     init(cexRPMService: CexRPMService) {
         self.cexRPMService = cexRPMService
@@ -44,6 +77,75 @@ final class BinanceAPI: ApiInterface {
             return "tickers_Binance.json"
         case .spot:
             return "tickers_Binance_spot.json"
+        }
+    }
+}
+
+extension BinanceAPI {
+
+    func launchDate(_ symbol: String, market: Cex.Market) async throws -> Date? {
+        guard market == .futures else {
+            return nil
+        }
+
+        guard let launchDate = try await exchangeInfoCache.launchDate(for: symbol, fetch: { [self] in
+            try await exchangeInfoLaunchDates(requiredSymbol: symbol)
+        }) else {
+            throw ApiInterfaceError.launchDateNotFound(symbol: symbol)
+        }
+        return launchDate
+    }
+
+    private func exchangeInfoLaunchDates(requiredSymbol: String) async throws -> [String: Date] {
+        do {
+            if let cachedData = try await FileService.shared.read(Self.exchangeInfoCacheFileName) {
+                let cachedLaunchDates = try exchangeInfoLaunchDates(data: cachedData)
+                if cachedLaunchDates[requiredSymbol] != nil {
+                    return cachedLaunchDates
+                }
+                print("Symbol \(requiredSymbol) is missing from cached Binance exchangeInfo, refreshing cache.")
+            }
+        } catch {
+            print("Binance exchangeInfo cache is broken, fetching from API. \(error)")
+        }
+
+        let url = URL(string: endpoint("exchangeInfo", market: .futures))!
+        cexRPMService.increment(.binance, market: .futures, api: .exchangeInfo)
+        let data = try await self.data(url, session: session)
+        let launchDates = try exchangeInfoLaunchDates(data: data)
+        try await FileService.shared.write(data, name: Self.exchangeInfoCacheFileName)
+        return launchDates
+    }
+
+    private func exchangeInfoLaunchDates(data: Data) throws -> [String: Date] {
+        struct ExchangeInfo: Decodable {
+            let symbols: [Symbol]
+
+            struct Symbol: Decodable {
+                let symbol: String
+                let onboardDate: Int64
+            }
+        }
+
+        let exchangeInfo = try JSONDecoder().decode(ExchangeInfo.self, from: data)
+        return exchangeInfo.symbols.reduce(into: [:]) { launchDatesBySymbol, symbol in
+            guard symbol.onboardDate > 0 else {
+                return
+            }
+            launchDatesBySymbol[symbol.symbol] = Date(
+                timeIntervalSince1970: TimeInterval(symbol.onboardDate) / 1000.0
+            )
+        }
+    }
+
+    enum ApiInterfaceError: Error, Sendable, LocalizedError {
+        case launchDateNotFound(symbol: String)
+
+        var errorDescription: String? {
+            switch self {
+            case .launchDateNotFound(let symbol):
+                return "Launch date not found: \(symbol)"
+            }
         }
     }
 }
