@@ -187,6 +187,54 @@ private struct NotCryptoSimbols {
         "V", // Visa Inc
         "TBT", // ProShares UltraShort 20+ Year Treasury
         "BITO", // ProShares Bitcoin ETF
+        "LYTE", // Roundhill Photonics & Optics ETF
+        "NCLD", // Roundhill Neocloud ETF
+        "VST", // Vistra Corp
+        "RIOT", // Riot Platforms Inc
+        "XIAOMI",
+        "SMIC", // Semiconductor Manufacturing International Corporation
+        "CSOPSAMSUNG2L", // CSOP Samsung Electronics Daily (2x) Leveraged Product
+        "CSOPSKHYNIX2L",
+        "MEITUAN", // MPNGY, Chinese multinational technology company
+        "KUAISHOU", // Kuaishou Technology
+        "OUST", // Ouster, Inc.
+        "SKDD", // GraniteShares 2x Short SK Hynix Daily ETF
+        "SKUU", // GraniteShares 2x Long SK Hynix Daily ETF
+        "CIFR", // Cipher Mining Inc.
+        "MO", // Altria Group, Inc.
+        "NET", // Cloudflare, Inc.
+        "CLSK", // CleanSpark, Inc.
+        "SPOT", // Spotify
+        "GE", // GE Aerospace
+        "KO", // The Coca-Cola Company
+        "AMC", // AMC Entertainment Holdings, Inc.
+        "GMESTOCK",
+        "SOFI", // SoFi Technologies, Inc.
+        "ON", // ON Semiconductor Corp
+        "XLV", // Health Care Select Sector SPDR Fund
+        "FLY", // Firefly Aerospace Inc.
+        "MUU", // Direxion Daily MU Bull 2X Shares
+        "POET", // POET Technologies Inc.
+        "BNC", // CEA Industries Inc.
+        "SMH", // VanEck Semiconductor ETF
+        "PURR", // Hyperliquid Strategies Inc.
+        "FLEX", // Flex Ltd.
+        "BOT", // RoboStrategy
+        "NOKIA",
+        "AMDSTOCK",
+        "ZHONGJI", // Zhongji Innolight
+        "SAMSUNGEM", // TradFi for Electro-Mechanics Co., Ltd.
+        "LGELECTRONICS", // TradFi for Electro-Mechanics Co., Ltd.
+        "HANMI", // HANMI Semiconductor
+        "NAVER", // NAVER Corporation
+        "KODEX200", // Samsung KODEX 200 ETF
+        "GIGADEV", // Gigadevice Semiconductor Inc
+        "HK1810", // Xiaomi Corporation
+        "HK0700", // Tencent Holdings Limited
+        "PENG", // Penguin Solutions, Inc.
+        "APP", // AppLovin
+        "WEN", // The Wendy's Company
+        "STRC", // Strategy (formerly MicroStrategy)
     ]
 }
 
