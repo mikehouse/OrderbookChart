@@ -235,6 +235,9 @@ private struct NotCryptoSimbols {
         "APP", // AppLovin
         "WEN", // The Wendy's Company
         "STRC", // Strategy (formerly MicroStrategy)
+        "DDOG", // Datadog Inc
+        "ISRG", // Intuitive Surgical Inc
+        "MNST", // Monster Beverage Corp
     ]
 }
 
