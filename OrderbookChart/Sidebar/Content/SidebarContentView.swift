@@ -238,6 +238,8 @@ private struct NotCryptoSimbols {
         "DDOG", // Datadog Inc
         "ISRG", // Intuitive Surgical Inc
         "MNST", // Monster Beverage Corp
+        "MAGS", // Roundhill Magnificent Seven ETF
+        "ADI", // Analog Devices Inc
     ]
 }
 
