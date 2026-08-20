@@ -244,6 +244,7 @@ private struct NotCryptoSimbols {
         "MRNA", // Moderna Inc
         "ANET", // Arista Networks Inc
         "FUTU", // Futu Holdings Ltd
+        "CAT", // Caterpillar Inc.
     ]
 }
 
