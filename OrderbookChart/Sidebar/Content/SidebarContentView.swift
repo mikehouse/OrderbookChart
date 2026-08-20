@@ -240,6 +240,10 @@ private struct NotCryptoSimbols {
         "MNST", // Monster Beverage Corp
         "MAGS", // Roundhill Magnificent Seven ETF
         "ADI", // Analog Devices Inc
+        "SPCH", // Leverage Shares 2X Long SPCX Daily ETF
+        "MRNA", // Moderna Inc
+        "ANET", // Arista Networks Inc
+        "FUTU", // Futu Holdings Ltd
     ]
 }
 
