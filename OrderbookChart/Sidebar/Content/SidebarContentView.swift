@@ -788,7 +788,9 @@ struct SidebarContentView: View {
             return
         }
 
-        let candidateTickers = allTickers.filter(shouldShowTicker)
+        let candidateTickers = allTickers
+            .filter(shouldShowTicker)
+            .filter(shouldShowTickerForCurrentSortRule)
         guard !candidateTickers.isEmpty else {
             tickers = []
             isLoading = false
@@ -1137,6 +1139,29 @@ struct SidebarContentView: View {
             }
         }
 
+        func sortByLaunchDate(oldestFirst: Bool) -> [Ticker] {
+            tickers.sorted { lhs, rhs in
+                let lhsLaunchDate = launchDateByTickerID[lhs.id]
+                let rhsLaunchDate = launchDateByTickerID[rhs.id]
+
+                switch (lhsLaunchDate, rhsLaunchDate) {
+                case let (lhsLaunchDate?, rhsLaunchDate?):
+                    if lhsLaunchDate == rhsLaunchDate {
+                        return lhs.symbol < rhs.symbol
+                    }
+                    return oldestFirst
+                        ? lhsLaunchDate < rhsLaunchDate
+                        : lhsLaunchDate > rhsLaunchDate
+                case (_?, nil):
+                    return true
+                case (nil, _?):
+                    return false
+                case (nil, nil):
+                    return lhs.symbol < rhs.symbol
+                }
+            }
+        }
+
         switch tickerSortRule {
         case .turnover,
              .turnoverUnder1M,
@@ -1148,9 +1173,12 @@ struct SidebarContentView: View {
              .turnover5MTo10M:
             return sort { $0.turnover24h }
         case .newest:
-            return sort { ticker in
-                launchDateByTickerID[ticker.id]?.timeIntervalSince1970 ?? -Double.infinity
-            }
+            return sortByLaunchDate(oldestFirst: false)
+        case .oldest,
+             .oldestOver1MTurnover,
+             .oldestOver5MTurnover,
+             .oldestOver10MTurnover:
+            return sortByLaunchDate(oldestFirst: true)
         case .priceChange:
             return sort { $0.priceChangePercent }
         case .priceChangeM:
@@ -1293,6 +1321,10 @@ struct SidebarContentView: View {
     private enum TickerSortRule: CaseIterable {
         case turnover
         case newest
+        case oldest
+        case oldestOver1MTurnover
+        case oldestOver5MTurnover
+        case oldestOver10MTurnover
         case turnoverUnder1M
         case turnoverOver1M
         case turnoverOver5M
@@ -1312,6 +1344,14 @@ struct SidebarContentView: View {
                 return "Turnover 24H"
             case .newest:
                 return "Newest"
+            case .oldest:
+                return "Oldest"
+            case .oldestOver1MTurnover:
+                return "Oldest > 1 M $ Turnover"
+            case .oldestOver5MTurnover:
+                return "Oldest > 5 M $ Turnover"
+            case .oldestOver10MTurnover:
+                return "Oldest > 10 M $ Turnover"
             case .turnoverUnder1M:
                 return "Turnover < 1 M $"
             case .turnoverOver1M:
@@ -1343,11 +1383,11 @@ struct SidebarContentView: View {
             switch self {
             case .turnoverUnder1M:
                 return (nil, 1_000_000)
-            case .turnoverOver1M:
+            case .turnoverOver1M, .oldestOver1MTurnover:
                 return (1_000_000, nil)
-            case .turnoverOver5M:
+            case .turnoverOver5M, .oldestOver5MTurnover:
                 return (5_000_000, nil)
-            case .turnoverOver10M:
+            case .turnoverOver10M, .oldestOver10MTurnover:
                 return (10_000_000, nil)
             case .atrOver1MTurnover:
                 return (1_000_000, nil)
@@ -1361,7 +1401,7 @@ struct SidebarContentView: View {
                 return (1_000_000, 10_000_000)
             case .turnover5MTo10M:
                 return (5_000_000, 10_000_000)
-            case .turnover, .newest, .priceChange, .priceChangeM:
+            case .turnover, .newest, .oldest, .priceChange, .priceChangeM:
                 return nil
             }
         }
@@ -1384,7 +1424,16 @@ struct SidebarContentView: View {
         }
 
         var sortsByLaunchDate: Bool {
-            self == .newest
+            switch self {
+            case .newest,
+                 .oldest,
+                 .oldestOver1MTurnover,
+                 .oldestOver5MTurnover,
+                 .oldestOver10MTurnover:
+                return true
+            default:
+                return false
+            }
         }
     }
 
