@@ -11,6 +11,8 @@ private struct NotCryptoSimbols {
 
     static let _currencies = [
         "NOK", // Norwegian Krone
+        "GBPUSD",
+        "EURUSD"
     ]
     static let _minerals = [
         "XAU", // Gold
@@ -245,6 +247,99 @@ private struct NotCryptoSimbols {
         "ANET", // Arista Networks Inc
         "FUTU", // Futu Holdings Ltd
         "CAT", // Caterpillar Inc.
+        "DUOL", // Duolingo Inc
+        "FN", // Fabrinet
+        "FISV", // Fiserv Inc
+        "AKAM", // Akamai Technologies Inc
+        "PFE", // Pfizer Inc
+        "CEG", // Constellation Energy Corp
+        "EWZS", // iShares MSCI Brazil Small-Cap ETF
+        "XLI", // State Street Industrial Select Sector SPDR ETF
+        "BKNG", // Booking Holdings Inc
+        "OXY", // Occidental Petroleum Corp
+        "SMR", // Nuscale Power Corp
+        "XP", // XP Inc
+        "STM", // STMicroelectronics NV
+        "EQT", // EQT Corp
+        "EIDO", // iShares MSCI Indonesia ETF
+        "AGPU", // Axe Compute Inc
+        "TTMI", // TTM Technologies Inc
+        "ABBV", // AbbVie Common Stock
+        "BAU", // The Boeing Company
+        "CRML", // Critical Metals Corp
+        "MDTSTOCK", // Medtronic PLC
+        "AXP", // American Express Co
+        "CSTOCK", // Citigroup Inc.
+        "IBKR", // Interactive Brokers Group, Inc.
+        "MXL", // Maxlinear Inc
+        "LMT", // Lockheed Martin Corp
+        "PG", // Procter & Gamble Co
+        "GRAL", // Grail Inc
+        "SNPS", // Synopsys, Inc.
+        "ZCSH", // Zcash ETF
+        "VIST", // Vista Energy SAB de CV - ADR
+        "YPF", // YPF SA
+        "NUSTOCK", // Nu Holdings
+        "PBR", // Petroleo Brasileiro ADR Reptg 2 Ord Shs
+        "MELI", // MercadoLibre Inc
+        "VKTX", // Viking Therapeutics Inc
+        "BMNU", // T-REX 2X Long BMNR Daily Target ETF
+        "UMC", // United Microelectronics Corporation
+        "MP", // Mp Materials Corp
+        "BWET", // Breakwave Tanker Shipping ETF
+        "LULU", // Lululemon Athletica Inc
+        "ACN", // Accenture Plc
+        "NKE", // Nike Inc
+        "CVNA", // Carvana Co
+        "TWST", // Twist Bioscience Corp
+        "POLYMARKET",
+        "OURA",
+        "OKLO", // Oklo Inc
+        "SDGR", // Schrodinger Inc
+        "HUT", // Hut 8 Corp
+        "CYPH", // Cypherpunk Technologies Inc
+        "PATH", // UiPath Inc
+        "SECZ", // Securitize Corp
+        "AMZU", // Direxion Daily AMZN Bull 2X ETF
+        "TLT", // iShares 20+ Year Treasury Bond ETF
+        "GTLB", // Gitlab Inc
+        "CORZ", // Core Scientific Inc
+        "ZS", // Zscaler Inc
+        "MSFU", // Direxion Daily MSFT Bull 2X ETF
+        "CONL", // GraniteShares 2x Long COIN Daily ETF
+        "IBIT", // iShares Bitcoin Trust ETF
+        "HORIZON", //  Horizon Robotics (Horizon.auto)
+        "MEITU", // Meitu, Inc.
+        "SENSETIME", // SenseTime Group Inc.
+        "FORMSTOCK", // FormFactor Inc
+        "CGNX", // Cognex Corp
+        "BTDR", // Bitdeer Technologies Group
+        "HUAHONG", // Hua Hong Semiconductor Limited
+        "LENOVO", // Lenovo Group
+        "BYD", // BYD Co. Ltd. H-shares
+        "CVXSTOCK", // Chevron Corporation
+        "MDB", // Mongodb Inc
+        "TEAM", // Atlassian Corporation
+        "GPRO", // GoPro Inc
+        "LAOPU", // Laopu Gold Co., Ltd.
+        "YOFC", // Yangtze Optical Fibre and Cable
+        "OKTA", // Okta, Inc.
+        "TEM", // Tempus AI Inc
+        "XLP", // State Street Consumer Staples Sel Sect SPDR ETF
+        "XLU", // State Street Utilities Select Sector SPDR ETF
+        "MCD", // McDonald's Corp
+        "SHEIN", // SHEIN Global Holdings Limited
+        "MSTU", // T-Rex 2X Long MSTR Daily Target ETF
+        "INFQ", // The Infleqtion, Inc.
+        "SPXL", // Direxion Daily S&P 500 Bull 3X ETF
+        "INTU", // Intuit Inc
+        "RAM", // Roundhill T-REX 2X Long DRAM Daily Target ETF
+        "DJT", // Trump Media & Technology Group Corp
+        "MRK", // Merck & Co Inc
+        "JD", // JD.com, Inc.
+        "PDD", // PDD Holdings Inc - ADR
+        "MOONSHOT", // Moonshot AI (Pre-IPO)
+        "BA", // The Boeing Company
     ]
 }
 
