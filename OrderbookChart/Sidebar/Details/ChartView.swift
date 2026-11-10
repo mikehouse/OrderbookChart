@@ -419,12 +419,11 @@ private struct PreviewWrapper: View {
             Text("")
                 .task {
                     let api = MockApi.bybitBTC1Min
-                    let (candles, orderbook, rpiOrderbook, ticker) = try! await (
-                        api.kLines("", market: .futures, interval: .min1, limit: 0),
-                        api.orderbook("", market: .futures),
-                        api.rpiOrderbook("", market: .futures),
-                        api.ticker("BTCUSDT", market: .futures),
-                    )
+                    // Separate awaits avoid a Swift 6.4 ownership-checker crash with try! await tuples.
+                    let candles = try! await api.kLines("", market: .futures, interval: .min1, limit: 0)
+                    let orderbook = try! await api.orderbook("", market: .futures)
+                    let rpiOrderbook = try! await api.rpiOrderbook("", market: .futures)
+                    let ticker = try! await api.ticker("BTCUSDT", market: .futures)
                     self.candles = candles
                     self.orderbook = orderbook
                     self.rpiOrderbook = rpiOrderbook
