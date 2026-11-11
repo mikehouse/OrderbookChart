@@ -340,6 +340,7 @@ private struct NotCryptoSimbols {
         "PDD", // PDD Holdings Inc - ADR
         "MOONSHOT", // Moonshot AI (Pre-IPO)
         "BA", // The Boeing Company
+        "DANGOTE", // Dangote Group
     ]
 }
 
