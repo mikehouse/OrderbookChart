@@ -341,6 +341,9 @@ private struct NotCryptoSimbols {
         "MOONSHOT", // Moonshot AI (Pre-IPO)
         "BA", // The Boeing Company
         "DANGOTE", // Dangote Group
+        "ANTA", // Antalpha Platform Holding Company
+        "GLXY", // Galaxy Digital Inc
+        "TMO", // Thermo Fisher Scientific Inc
     ]
 }
 
