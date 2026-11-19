@@ -344,6 +344,9 @@ private struct NotCryptoSimbols {
         "ANTA", // Antalpha Platform Holding Company
         "GLXY", // Galaxy Digital Inc
         "TMO", // Thermo Fisher Scientific Inc
+        "ETN", // Eaton Corporation
+        "ARTYSTOCK", // Shares Future AI & Tech ETF
+        "IGV", // iShares Expanded Tech-Software ETF
     ]
 }
 
