@@ -347,6 +347,10 @@ private struct NotCryptoSimbols {
         "ETN", // Eaton Corporation
         "ARTYSTOCK", // Shares Future AI & Tech ETF
         "IGV", // iShares Expanded Tech-Software ETF
+        "TJX", // The TJX Companies
+        "TGTSTOCK", // Target Corporation
+        "KR", // The Kroger Co
+        "ANDD", // 2x Short Anthropic Daily ETF
     ]
 }
 
